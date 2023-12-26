@@ -8,7 +8,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,7 +19,7 @@ public final class Kosuzu extends JavaPlugin {
         return instance;
     }
 
-    public FileConfiguration config = getConfig();
+    public final FileConfiguration config = getConfig();
 
     private static final Gson gson = new Gson();
 
@@ -35,6 +34,8 @@ public final class Kosuzu extends JavaPlugin {
         config.addDefault("deepl-api-key", "changeme");
         config.addDefault("default-language", "EN");
         config.addDefault("eager-translation", false);
+        config.addDefault("ratelimit.token_bucket_capacity", 256); // Max characters in a single message
+        config.addDefault("ratelimit.token_refill_rate", 25); // Characters per second
         config.options().copyDefaults(true);
         saveConfig();
 
