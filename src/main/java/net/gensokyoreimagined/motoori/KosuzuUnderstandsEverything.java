@@ -26,18 +26,18 @@ public class KosuzuUnderstandsEverything implements Listener {
         // problem with eager translation: can't adjust the message
 
         event.message(
-                event
-                        .message()
-                        .hoverEvent(
-                                Component
-                                        .text("Click to translate")
-                                        .color(NamedTextColor.GRAY)
-                        )
-                        .clickEvent(
-                                ClickEvent.callback(
-                                        (player) -> translateCallback(event, player)
-                                )
-                        )
+            event
+                .message()
+                .hoverEvent(
+                    Component
+                        .text("Click to translate")
+                        .color(NamedTextColor.GRAY)
+                )
+                .clickEvent(
+                    ClickEvent.callback(
+                        (player) -> translateCallback(event, player)
+                    )
+                )
         );
     }
 

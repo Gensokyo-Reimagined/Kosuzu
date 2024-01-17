@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'maven-publish'
 }
 
 group = 'net.gensokyoreimagined'
@@ -27,6 +28,7 @@ dependencies {
     compileOnly "com.comphenix.protocol:ProtocolLib:5.2.0-SNAPSHOT"
     implementation 'com.github.mizosoft.methanol:methanol:1.7.0'
     implementation 'com.github.mizosoft.methanol:methanol-brotli:1.7.0'
+    implementation "org.xerial:sqlite-jdbc:3.44.1.0"
 }
 
 shadowJar {
@@ -57,4 +59,33 @@ processResources {
     filesMatching('plugin.yml') {
         expand props
     }
+}
+
+configurations {
+    create("conf")
+}
+
+def jarFile = file("build/libs/%s-%s-all.jar".formatted(project.name, project.version))
+def jarArtifact = artifacts.add("conf", jarFile) {
+    type = "jar"
+    builtBy("jar")
+}
+
+
+publishing {
+   publications {
+       maven(MavenPublication) {
+           artifact jarArtifact
+           group "plugins"
+       }
+   }
+
+   repositories {
+      maven {
+         name = "gensorepo"
+         credentials(PasswordCredentials)
+         // url to the releases maven repository
+         url = uri("https://repo.gensokyoreimagined.net/")
+      }
+   }
 }

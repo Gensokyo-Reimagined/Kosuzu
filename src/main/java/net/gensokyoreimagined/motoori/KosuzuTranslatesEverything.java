@@ -28,9 +28,15 @@ public class KosuzuTranslatesEverything {
                 .build();
     }
 
-    private final String DEEPL_MOBILE_API = "https://www2.deepl.com/jsonrpc";
-
     private DeepLTranslation translateViaMobileRPC(String input, @Nullable String language) {
+        // issue: language is weirdly converted for mobile API?
+        if (language == null) {
+            language = Objects.requireNonNull(Kosuzu.getInstance().config.getString("default-language"));
+        }
+
+        // region not respected in this API
+        language = language.substring(0, 2).toLowerCase();
+
         var deeplRequest = new DeepLMobileRequest(input, language);
         var jsonRequest = gson.toJson(deeplRequest);
 
@@ -40,6 +46,7 @@ public class KosuzuTranslatesEverything {
             jsonRequest = jsonRequest.replace("\"method\" : \"", "\"method\": \"");
         }
 
+        final String DEEPL_MOBILE_API = "https://www2.deepl.com/jsonrpc";
         var request = HttpRequest
             .newBuilder(URI.create(DEEPL_MOBILE_API))
             // we have an impostor among us
@@ -58,6 +65,7 @@ public class KosuzuTranslatesEverything {
             .build();
 
         try {
+            // MoreBodyHandlers since the response is brotli-compressed
             var response = client.send(request, MoreBodyHandlers.decoding(HttpResponse.BodyHandlers.ofString()));
             var statusCode = response.statusCode();
             var body = response.body();

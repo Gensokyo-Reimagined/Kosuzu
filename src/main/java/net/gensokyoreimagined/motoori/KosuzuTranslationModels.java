@@ -128,8 +128,10 @@ public class KosuzuTranslationModels {
     }
 
     public static class DeepLMobileResponse {
+        @SuppressWarnings("unused")
         @SerializedName("jsonrpc")
         String jsonrpc;
+        @SuppressWarnings("unused")
         @SerializedName("id")
         int id;
         @SerializedName("result")
@@ -151,6 +153,7 @@ public class KosuzuTranslationModels {
         DeepLMobileTranslation[] translations;
         @SerializedName("lang")
         String lang;
+        @SuppressWarnings("unused")
         @SerializedName("lang_is_confident")
         boolean langIsConfident;
         // Ignore detectedLanguages for now
