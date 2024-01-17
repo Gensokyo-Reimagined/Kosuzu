@@ -1,0 +1,47 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will build a package using Gradle and then publish it to GitHub packages when a release is created
+# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#Publishing-using-gradle
+
+name: Build plugin and not blow up
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: JDK 17 setup
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        server-id: github
+        settings-path: ${{ github.workspace }}
+
+    - name: Gradle plz build
+      uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
+      with:
+        arguments: build shadowJar
+
+    - name: GitHub save this jar for me kthx
+      uses: actions/upload-artifact@v3
+      with:
+        name: kosuzu-plugin
+        path: build/libs/*-all.jar
+
+    - name: Reposilite hates my posterior
+      uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
+      with:
+        arguments: publish
+      env:
+        USERNAME: ${{ secrets.ORG_GRADLE_PROJECT_GENSOREPOUSERNAME }}
+        TOKEN: ${{ secrets.ORG_GRADLE_PROJECT_GENSOREPOPASSWORD }}
