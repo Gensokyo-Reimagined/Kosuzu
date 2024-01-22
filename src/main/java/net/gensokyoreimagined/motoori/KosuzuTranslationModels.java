@@ -133,7 +133,7 @@ public class KosuzuTranslationModels {
         String jsonrpc;
         @SuppressWarnings("unused")
         @SerializedName("id")
-        int id;
+        long id;
         @SerializedName("result")
         DeepLMobileResult result;
 
