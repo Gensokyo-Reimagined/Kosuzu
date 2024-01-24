@@ -2,9 +2,11 @@ package net.gensokyoreimagined.motoori;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -13,18 +15,23 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 public class KosuzuRemembersEverything {
-    private BasicDataSource dataSource = new BasicDataSource();
+    private final YamlConfiguration translations;
+    private final BasicDataSource dataSource = new BasicDataSource();
 
-    private static KosuzuRemembersEverything instance;
+    public KosuzuRemembersEverything() {
+        var translationFile = Kosuzu.getInstance().getResource("translations.yml");
+        if (translationFile == null) {
+            throw new RuntimeException("Failed to find translations.yml! Is the plugin jar corrupted?");
+        }
 
-    public static KosuzuRemembersEverything getInstance() {
-        return instance;
-    }
-
-    private KosuzuRemembersEverything() {
-        instance = this;
+        try (var reader = new InputStreamReader(translationFile)) {
+            translations = YamlConfiguration.loadConfiguration(reader);
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to load translations.yml! Is the plugin jar corrupted?", ex);
+        }
 
         var type = Kosuzu.getInstance().config.getString("storage.type");
         if (type == null) {
@@ -36,13 +43,22 @@ public class KosuzuRemembersEverything {
                 initializeSqlite();
                 break;
             case "mysql":
-                initializeMysql();
+                initializeMySQL();
                 break;
             default:
                 throw new RuntimeException("Kosuzu can't remember how to use storage type: " + type);
         }
 
         initializeDatabase();
+    }
+
+    public String getTranslation(String key, String lang) {
+        // Fetches the translation for a given key and language
+        // If the translation doesn't exist, it will try to fetch the translation for the default language
+        // If that doesn't exist either, it will return the key
+
+        return translations.getString(key + "." + lang,
+                translations.getString(key + "." + Kosuzu.getInstance().config.getString("default-language", "EN-US"), key + "." + lang));
     }
 
     public Connection getConnection() throws SQLException {
@@ -73,7 +89,7 @@ public class KosuzuRemembersEverything {
         }
     }
 
-    private void initializeMysql() {
+    private void initializeMySQL() {
         var host = Kosuzu.getInstance().config.getString("storage.mysql.host", "localhost");
         var port = Kosuzu.getInstance().config.getInt("storage.mysql.port", 3306);
 
@@ -99,10 +115,36 @@ public class KosuzuRemembersEverything {
     }
 
     private void initializeDatabase() {
+        var initialization = Kosuzu.getInstance().getResource("dbinit.sql");
+        if (initialization == null) {
+            throw new RuntimeException("Failed to find dbinit.sql! Is the plugin jar corrupted?");
+        }
+
+        String sql;
+
+        try {
+            sql = new String(initialization.readAllBytes());
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to load dbinit.sql! Is the plugin jar corrupted?", ex);
+        }
+
+        var split = sql.split(";");
+
         try (var connection = getConnection()) {
-            var statement = connection.createStatement();
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS `user` (`uuid` VARCHAR(36) NOT NULL, `default_language` VARCHAR(8) NOT NULL DEFAULT 'EN-US', PRIMARY KEY (`uuid`))");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS `language` (`uuid` VARCHAR(36) NOT NULL, `language` VARCHAR(8) NOT NULL, `level` INT NOT NULL DEFAULT 0, PRIMARY KEY (`uuid`, `language`), FOREIGN KEY (`uuid`) REFERENCES `user` (`uuid`) ON DELETE CASCADE)");
+            try (var statement = connection.createStatement()) {
+                for (var query : split) {
+                    statement.execute(query);
+                }
+            }
+
+            for (var language : KosuzuHintsEverything.LANGUAGES) {
+                try (var insert = connection.prepareStatement("INSERT IGNORE INTO `language` (`code`, `native_name`, `english_name`) VALUES (?, ?, ?)")) {
+                    insert.setString(1, language);
+                    insert.setString(2, getTranslation("language.native", language));
+                    insert.setString(3, getTranslation("language.english", language));
+                    insert.execute();
+                }
+            }
         } catch (SQLException e) {
             Bukkit.getLogger().severe("Failed to initialize database!");
             throw new RuntimeException(e);
@@ -110,13 +152,14 @@ public class KosuzuRemembersEverything {
     }
 
     @NotNull
-    public String getUserDefaultLanguage(String uuid) {
+    public String getUserDefaultLanguage(UUID uuid) {
         try (var connection = getConnection()) {
-            var statement = connection.prepareStatement("SELECT `default_language` FROM `user` WHERE `uuid` = ?");
-            statement.setString(1, uuid);
-            var result = statement.executeQuery();
-            if (result.next()) {
-                return result.getString("default_language");
+            try (var statement = connection.prepareStatement("SELECT `default_language` FROM `user` WHERE `uuid` = ?")) {
+                statement.setString(1, uuid.toString());
+                var result = statement.executeQuery();
+                if (result.next()) {
+                    return result.getString("default_language");
+                }
             }
         } catch (SQLException e) {
             Bukkit.getLogger().severe("Failed to get user default language!");
@@ -147,5 +190,19 @@ public class KosuzuRemembersEverything {
         }
 
         return List.of(Kosuzu.getInstance().config.getString("default-language", "EN-US"));
+    }
+
+    public void setUserDefaultLanguage(UUID uuid, String lang) {
+        try (var connection = getConnection()) {
+            try (var statement = connection.prepareStatement("INSERT INTO `user` (`uuid`, `default_language`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `default_language` = ?")) {
+                statement.setString(1, uuid.toString());
+                statement.setString(2, lang);
+                statement.setString(3, lang);
+                statement.execute();
+            }
+        } catch (SQLException e) {
+            Bukkit.getLogger().severe("Failed to set user default language!");
+            Bukkit.getLogger().severe(e.getMessage());
+        }
     }
 }

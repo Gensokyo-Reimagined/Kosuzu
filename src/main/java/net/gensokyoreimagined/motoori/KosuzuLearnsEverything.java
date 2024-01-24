@@ -55,21 +55,23 @@ public class KosuzuLearnsEverything implements CommandExecutor {
         var language = args[1].toUpperCase();
 
         if (KosuzuHintsEverything.LANGUAGES.contains(language)) {
-            Kosuzu.getInstance().setUserLanguage(player.getUniqueId(), language);
+            Kosuzu.getInstance().database.setUserDefaultLanguage(player.getUniqueId(), language);
 
             sender.sendMessage(
                 Component
                     .text()
                     .color(NamedTextColor.GREEN)
-                    .content("Language changed to " + language)
+                    .content(Kosuzu.getInstance().database.getTranslation("language.change.success", language))
                     .build()
             );
         } else {
+            var oldLang = Kosuzu.getInstance().database.getUserDefaultLanguage(player.getUniqueId());
+
             sender.sendMessage(
                 Component
                     .text()
                     .color(NamedTextColor.RED)
-                    .content("Invalid language code")
+                    .content(Kosuzu.getInstance().database.getTranslation("language.change.fail", oldLang))
                     .build()
             );
         }

@@ -10,7 +10,9 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
@@ -18,11 +20,8 @@ public class KosuzuUnderstandsEverything implements Listener {
 
     private final KosuzuTranslatesEverything translator = new KosuzuTranslatesEverything();
 
-    // TODO make this configurable (esp by selected language)
-    private final String FAILED_TO_TRANSLATE = "Failed to translate";
-
-    @EventHandler
-    public void onPlayerMessage(AsyncChatEvent event) {
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerMessage(@NotNull AsyncChatEvent event) {
         // problem with eager translation: can't adjust the message
 
         event.message(
@@ -50,13 +49,13 @@ public class KosuzuUnderstandsEverything implements Listener {
         if (player instanceof Player bukkitPlayer)
             uuid = bukkitPlayer.getUniqueId();
 
-        var language = Kosuzu.getInstance().getUserLanguage(uuid);
+        var language = Kosuzu.getInstance().database.getUserDefaultLanguage(uuid);
         var translation = translator.translate(message, language);
 
         if (translation == null) {
             event.getPlayer().sendMessage(
                 Component.text()
-                    .content(FAILED_TO_TRANSLATE)
+                    .content(Kosuzu.getInstance().database.getTranslation("translate.fail", language))
                     .color(NamedTextColor.RED)
                     .build()
             );
