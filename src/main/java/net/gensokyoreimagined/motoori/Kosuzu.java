@@ -32,10 +32,19 @@ public final class Kosuzu extends JavaPlugin {
 
         config.addDefault("deepl-api-url", "https://api-free.deepl.com/v2/translate");
         config.addDefault("deepl-api-key", "changeme");
-        config.addDefault("default-language", "EN");
-        config.addDefault("eager-translation", false);
+        config.addDefault("default-language", "EN-US");
+        config.addDefault("eager-translation", false); // DEPRECATED
         config.addDefault("ratelimit.token_bucket_capacity", 256); // Max characters in a single message
         config.addDefault("ratelimit.token_refill_rate", 25); // Characters per second
+
+        config.addDefault("storage.type", "sqlite");
+        config.addDefault("storage.sqlite.file", "kosuzu.db");
+        config.addDefault("storage.mysql.host", "localhost");
+        config.addDefault("storage.mysql.port", 3306);
+        config.addDefault("storage.mysql.database", "kosuzu");
+        config.addDefault("storage.mysql.username", "kosuzu");
+        config.addDefault("storage.mysql.password", "changeme");
+
         config.options().copyDefaults(true);
         saveConfig();
 

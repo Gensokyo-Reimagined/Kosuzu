@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'net.gensokyoreimagined'
-version = '1.0.1'
+version = '1.1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -28,7 +28,9 @@ dependencies {
     compileOnly "com.comphenix.protocol:ProtocolLib:5.2.0-SNAPSHOT"
     implementation 'com.github.mizosoft.methanol:methanol:1.7.0'
     implementation 'com.github.mizosoft.methanol:methanol-brotli:1.7.0'
-    implementation "org.xerial:sqlite-jdbc:3.44.1.0"
+    implementation "org.xerial:sqlite-jdbc:3.45.0.0"
+    implementation "com.mysql:mysql-connector-j:8.3.0"
+    implementation "org.apache.commons:commons-dbcp2:2.11.0"
 }
 
 shadowJar {
