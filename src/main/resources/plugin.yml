@@ -2,10 +2,9 @@ name: Kosuzu
 version: '${version}'
 main: net.gensokyoreimagined.motoori.Kosuzu
 api-version: '1.20'
-depend:
+softdepend:
   - ProtocolLib
 commands:
   kosuzu:
     usage: /kosuzu <subcommand> <options>
     description: Control the translation system
-    permission: kosuzu.translate

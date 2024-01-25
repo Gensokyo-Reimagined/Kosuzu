@@ -1,7 +1,6 @@
 package net.gensokyoreimagined.motoori;
 
 import org.apache.commons.dbcp2.BasicDataSource;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,12 +15,18 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public class KosuzuRemembersEverything {
     private final YamlConfiguration translations;
     private final BasicDataSource dataSource = new BasicDataSource();
+    private final Logger logger;
+
+    private boolean isSqlite = false;
 
     public KosuzuRemembersEverything() {
+        logger = Kosuzu.getInstance().getLogger();
+
         var translationFile = Kosuzu.getInstance().getResource("translations.yml");
         if (translationFile == null) {
             throw new RuntimeException("Failed to find translations.yml! Is the plugin jar corrupted?");
@@ -40,6 +45,7 @@ public class KosuzuRemembersEverything {
 
         switch (type) {
             case "sqlite":
+                isSqlite = true;
                 initializeSqlite();
                 break;
             case "mysql":
@@ -74,17 +80,17 @@ public class KosuzuRemembersEverything {
             if (!Files.exists(pathObj))
                 Files.createFile(pathObj);
         } catch (IOException e) {
-            Bukkit.getLogger().severe("Failed to create SQLite database file! Maybe check your permissions? Writing to: " + path);
+            logger.severe("Failed to create SQLite database file! Maybe check your permissions? Writing to: " + path);
             throw new RuntimeException(e);
         }
 
         try {
-            dataSource.setUrl("jdbc:sqlite:" + path);
+            dataSource.setUrl("jdbc:sqlite:plugins/Kosuzu/" + path);
             dataSource.setMinIdle(5);
             dataSource.setMaxIdle(10);
             dataSource.setMaxOpenPreparedStatements(50);
         } catch (Exception e) {
-            Bukkit.getLogger().severe("Failed to connect to SQLite database! Writing to: " + path);
+            logger.severe("Failed to connect to SQLite database! Writing to: " + path);
             throw new RuntimeException(e);
         }
     }
@@ -109,7 +115,7 @@ public class KosuzuRemembersEverything {
             dataSource.setMaxIdle(20);
             dataSource.setMaxOpenPreparedStatements(100);
         } catch (Exception e) {
-            Bukkit.getLogger().severe("Failed to connect to MySQL database! Connecting to: " + host + ":" + port + "/" + database);
+            logger.severe("Failed to connect to MySQL database! Connecting to: " + host + ":" + port + "/" + database);
             throw new RuntimeException(e);
         }
     }
@@ -138,7 +144,7 @@ public class KosuzuRemembersEverything {
             }
 
             for (var language : KosuzuHintsEverything.LANGUAGES) {
-                try (var insert = connection.prepareStatement("INSERT IGNORE INTO `language` (`code`, `native_name`, `english_name`) VALUES (?, ?, ?)")) {
+                try (var insert = connection.prepareStatement(s("INSERT IGNORE INTO `language` (`code`, `native_name`, `english_name`) VALUES (?, ?, ?)"))) {
                     insert.setString(1, language);
                     insert.setString(2, getTranslation("language.native", language));
                     insert.setString(3, getTranslation("language.english", language));
@@ -146,9 +152,19 @@ public class KosuzuRemembersEverything {
                 }
             }
         } catch (SQLException e) {
-            Bukkit.getLogger().severe("Failed to initialize database!");
+            logger.severe("Failed to initialize database!");
             throw new RuntimeException(e);
         }
+    }
+
+    private String s(String sql) {
+        if (!isSqlite) {
+            return sql;
+        }
+
+        return sql
+                .replace("AUTO_INCREMENT", "AUTOINCREMENT")
+                .replace("INSERT IGNORE", "INSERT OR IGNORE");
     }
 
     @NotNull
@@ -162,8 +178,8 @@ public class KosuzuRemembersEverything {
                 }
             }
         } catch (SQLException e) {
-            Bukkit.getLogger().severe("Failed to get user default language!");
-            Bukkit.getLogger().severe(e.getMessage());
+            logger.severe("Failed to get user default language!");
+            logger.severe(e.getMessage());
         }
 
         return Kosuzu.getInstance().config.getString("default-language", "EN-US");
@@ -172,7 +188,7 @@ public class KosuzuRemembersEverything {
     @NotNull
     public Collection<String> getUserLanguages(String uuid) {
         try (var connection = getConnection()) {
-            try (var statement = connection.prepareStatement("SELECT `language` FROM `language` WHERE `uuid` = ?")) {
+            try (var statement = connection.prepareStatement("SELECT `language` FROM `multilingual` WHERE `uuid` = ?")) {
                 statement.setString(1, uuid);
                 var result = statement.executeQuery();
                 // collect results into a collection
@@ -185,8 +201,8 @@ public class KosuzuRemembersEverything {
                 return output;
             }
         } catch (SQLException e) {
-            Bukkit.getLogger().severe("Failed to get user languages!");
-            Bukkit.getLogger().severe(e.getMessage());
+            logger.severe("Failed to get user languages!");
+            logger.severe(e.getMessage());
         }
 
         return List.of(Kosuzu.getInstance().config.getString("default-language", "EN-US"));
@@ -194,15 +210,21 @@ public class KosuzuRemembersEverything {
 
     public void setUserDefaultLanguage(UUID uuid, String lang) {
         try (var connection = getConnection()) {
-            try (var statement = connection.prepareStatement("INSERT INTO `user` (`uuid`, `default_language`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `default_language` = ?")) {
+            // i want to do ON DUPLICATE KEY UPDATE, but ugh compatibility
+            try (var statement = connection.prepareStatement(s("INSERT IGNORE INTO `user` (`uuid`, `default_language`) VALUES (?, ?); UPDATE `user` SET `default_language` = ? WHERE `uuid` = ?;"))) {
                 statement.setString(1, uuid.toString());
                 statement.setString(2, lang);
-                statement.setString(3, lang);
+                statement.execute();
+            }
+
+            try (var statement = connection.prepareStatement(s("UPDATE `user` SET `default_language` = ? WHERE `uuid` = ?;"))) {
+                statement.setString(1, lang);
+                statement.setString(2, uuid.toString());
                 statement.execute();
             }
         } catch (SQLException e) {
-            Bukkit.getLogger().severe("Failed to set user default language!");
-            Bukkit.getLogger().severe(e.getMessage());
+            logger.severe("Failed to set user default language!");
+            logger.severe(e.getMessage());
         }
     }
 }

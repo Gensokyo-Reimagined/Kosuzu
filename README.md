@@ -20,5 +20,20 @@ Future versions of this plugin will allow for the use of other translation servi
 ## Configuration (as of 1.1.0)
 
 ```yaml
-
+deepl-api-url: # The API link for DeepL: free edition is https://api-free.deepl.com/v2/translate, but Pro users can use https://api.deepl.com/v2/translate
+deepl-api-key: # Your API key for DeepL - most likely ends with ":fx" for free users
+default-language: # The default language to translate to, e.g. en-US
+ratelimit:
+  token_bucket_capacity: # The max number of characters that can be translated at one time
+  token_refill_rate: # The number of characters that can be translated per second
+storage:
+  type: # Either "sqlite" or "mysql"
+  sqlite:
+    file: # Path to your SQLite database file, e.g. kosuzu.db. The plugin will create the tables automatically
+  mysql:
+    host: # Hostname of your MySQL server, e.g. localhost
+    port: # Port of your MySQL server, e.g. 3306
+    database: # Name of your MySQL database, e.g. kosuzu; the plugin will create the tables automatically
+    username: # Username to your MySQL database
+    password: # Password to your MySQL database
 ```

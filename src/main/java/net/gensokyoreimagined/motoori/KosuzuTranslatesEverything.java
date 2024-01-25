@@ -71,7 +71,7 @@ public class KosuzuTranslatesEverything {
             var body = response.body();
 
             if (statusCode != 200) {
-                Bukkit.getLogger().warning("[Kosuzu] Failed to send request to DeepL via mobile API:\n" + body);
+                Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL via mobile API:\n" + body);
                 return null;
             }
 
@@ -79,7 +79,7 @@ public class KosuzuTranslatesEverything {
             return deeplResponse.getTranslation();
         }
         catch (Exception e) {
-            Bukkit.getLogger().warning("[Kosuzu] Failed to send request to DeepL via mobile API:\n" + e.getMessage());
+            Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL via mobile API:\n" + e.getMessage());
             return null;
         }
     }
@@ -88,7 +88,7 @@ public class KosuzuTranslatesEverything {
         var config = Kosuzu.getInstance().config;
         var key = config.getString("deepl-api-key");
         if (key == null || key.equals("changeme")) {
-            Bukkit.getLogger().warning("[Kosuzu] Please set your DeepL API key in config.yml");
+            Kosuzu.getInstance().getLogger().warning("Please set your DeepL API key in config.yml");
             return null;
         }
 
@@ -113,7 +113,7 @@ public class KosuzuTranslatesEverything {
             var body = response.body();
 
             if (statusCode != 200) {
-                Bukkit.getLogger().warning("[Kosuzu] Failed to send request to DeepL:\n" + body);
+                Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL:\n" + body);
                 return null;
             }
 
@@ -121,7 +121,7 @@ public class KosuzuTranslatesEverything {
             return deeplResponse.getTranslation();
         }
         catch (Exception e) {
-            Bukkit.getLogger().warning("[Kosuzu] Failed to send request to DeepL:\n" + e.getMessage());
+            Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL:\n" + e.getMessage());
             return null;
         }
     }
@@ -129,7 +129,7 @@ public class KosuzuTranslatesEverything {
     public DeepLTranslation translate(String input, @Nullable String language) {
         var translation = translateViaMobileRPC(input, language);
         if (translation == null) {
-            Bukkit.getLogger().warning("[Kosuzu] Falling back to DeepL API");
+            Kosuzu.getInstance().getLogger().warning("Falling back to DeepL API");
             translation = translateViaAPI(input, language);
         }
 

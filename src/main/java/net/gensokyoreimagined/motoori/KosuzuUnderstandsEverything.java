@@ -53,7 +53,7 @@ public class KosuzuUnderstandsEverything implements Listener {
         var translation = translator.translate(message, language);
 
         if (translation == null) {
-            event.getPlayer().sendMessage(
+            player.sendMessage(
                 Component.text()
                     .content(Kosuzu.getInstance().database.getTranslation("translate.fail", language))
                     .color(NamedTextColor.RED)
@@ -63,7 +63,7 @@ public class KosuzuUnderstandsEverything implements Listener {
             return;
         }
 
-        event.getPlayer().sendMessage(
+        player.sendMessage(
             Component
                 .text()
                 .append(
