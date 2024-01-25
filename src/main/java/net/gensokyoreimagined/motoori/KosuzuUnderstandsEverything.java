@@ -18,7 +18,13 @@ import java.util.UUID;
 
 public class KosuzuUnderstandsEverything implements Listener {
 
-    private final KosuzuTranslatesEverything translator = new KosuzuTranslatesEverything();
+    private final KosuzuTranslatesEverything translator;
+    private final KosuzuRemembersEverything database;
+    
+    public KosuzuUnderstandsEverything(Kosuzu kosuzu) {
+        translator = new KosuzuTranslatesEverything(kosuzu);
+        database = kosuzu.database;
+    }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerMessage(@NotNull AsyncChatEvent event) {
@@ -49,13 +55,13 @@ public class KosuzuUnderstandsEverything implements Listener {
         if (player instanceof Player bukkitPlayer)
             uuid = bukkitPlayer.getUniqueId();
 
-        var language = Kosuzu.getInstance().database.getUserDefaultLanguage(uuid);
+        var language = database.getUserDefaultLanguage(uuid);
         var translation = translator.translate(message, language);
 
         if (translation == null) {
             player.sendMessage(
                 Component.text()
-                    .content(Kosuzu.getInstance().database.getTranslation("translate.fail", language))
+                    .content(database.getTranslation("translate.fail", language))
                     .color(NamedTextColor.RED)
                     .build()
             );

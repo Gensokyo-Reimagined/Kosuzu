@@ -10,8 +10,10 @@ import org.jetbrains.annotations.NotNull;
 
 public class KosuzuLearnsEverything implements CommandExecutor {
 
-    public KosuzuLearnsEverything() {
+    private final KosuzuRemembersEverything database;
 
+    public KosuzuLearnsEverything(Kosuzu kosuzu) {
+        database = kosuzu.database;
     }
 
     @Override
@@ -55,23 +57,23 @@ public class KosuzuLearnsEverything implements CommandExecutor {
         var language = args[1].toUpperCase();
 
         if (KosuzuHintsEverything.LANGUAGES.contains(language)) {
-            Kosuzu.getInstance().database.setUserDefaultLanguage(player.getUniqueId(), language);
+            database.setUserDefaultLanguage(player.getUniqueId(), language);
 
             sender.sendMessage(
                 Component
                     .text()
                     .color(NamedTextColor.GREEN)
-                    .content(Kosuzu.getInstance().database.getTranslation("language.change.success", language))
+                    .content(database.getTranslation("language.change.success", language))
                     .build()
             );
         } else {
-            var oldLang = Kosuzu.getInstance().database.getUserDefaultLanguage(player.getUniqueId());
+            var oldLang = database.getUserDefaultLanguage(player.getUniqueId());
 
             sender.sendMessage(
                 Component
                     .text()
                     .color(NamedTextColor.RED)
-                    .content(Kosuzu.getInstance().database.getTranslation("language.change.fail", oldLang))
+                    .content(database.getTranslation("language.change.fail", oldLang))
                     .build()
             );
         }

@@ -3,7 +3,7 @@ package net.gensokyoreimagined.motoori;
 import com.github.mizosoft.methanol.MoreBodyHandlers;
 import com.google.gson.Gson;
 import net.gensokyoreimagined.motoori.KosuzuTranslationModels.*;
-import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 /**
  * Invokes DeepLX (i.e., DeepL mobile app impersonation) to translate everything; if rate-limited, use DeepL API
@@ -18,10 +19,14 @@ import java.util.Objects;
  */
 public class KosuzuTranslatesEverything {
     private final HttpClient client;
+    private final Logger logger;
+    private final FileConfiguration config;
 
     private final Gson gson = new Gson();
 
-    public KosuzuTranslatesEverything() {
+    public KosuzuTranslatesEverything(Kosuzu kosuzu) {
+        logger = kosuzu.getLogger();
+        config = kosuzu.config;
         client = HttpClient
                 .newBuilder()
                 .followRedirects(HttpClient.Redirect.ALWAYS)
@@ -31,7 +36,7 @@ public class KosuzuTranslatesEverything {
     private DeepLTranslation translateViaMobileRPC(String input, @Nullable String language) {
         // issue: language is weirdly converted for mobile API?
         if (language == null) {
-            language = Objects.requireNonNull(Kosuzu.getInstance().config.getString("default-language"));
+            language = Objects.requireNonNull(config.getString("default-language"));
         }
 
         // region not respected in this API
@@ -71,7 +76,7 @@ public class KosuzuTranslatesEverything {
             var body = response.body();
 
             if (statusCode != 200) {
-                Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL via mobile API:\n" + body);
+                logger.warning("Failed to send request to DeepL via mobile API:\n" + body);
                 return null;
             }
 
@@ -79,16 +84,15 @@ public class KosuzuTranslatesEverything {
             return deeplResponse.getTranslation();
         }
         catch (Exception e) {
-            Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL via mobile API:\n" + e.getMessage());
+            logger.warning("Failed to send request to DeepL via mobile API:\n" + e.getMessage());
             return null;
         }
     }
 
     private DeepLTranslation translateViaAPI(String input, @Nullable String language) {
-        var config = Kosuzu.getInstance().config;
         var key = config.getString("deepl-api-key");
         if (key == null || key.equals("changeme")) {
-            Kosuzu.getInstance().getLogger().warning("Please set your DeepL API key in config.yml");
+            logger.warning("Please set your DeepL API key in config.yml");
             return null;
         }
 
@@ -113,7 +117,7 @@ public class KosuzuTranslatesEverything {
             var body = response.body();
 
             if (statusCode != 200) {
-                Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL:\n" + body);
+                logger.warning("Failed to send request to DeepL:\n" + body);
                 return null;
             }
 
@@ -121,7 +125,7 @@ public class KosuzuTranslatesEverything {
             return deeplResponse.getTranslation();
         }
         catch (Exception e) {
-            Kosuzu.getInstance().getLogger().warning("Failed to send request to DeepL:\n" + e.getMessage());
+            logger.warning("Failed to send request to DeepL:\n" + e.getMessage());
             return null;
         }
     }
@@ -129,7 +133,7 @@ public class KosuzuTranslatesEverything {
     public DeepLTranslation translate(String input, @Nullable String language) {
         var translation = translateViaMobileRPC(input, language);
         if (translation == null) {
-            Kosuzu.getInstance().getLogger().warning("Falling back to DeepL API");
+            logger.warning("Falling back to DeepL API");
             translation = translateViaAPI(input, language);
         }
 

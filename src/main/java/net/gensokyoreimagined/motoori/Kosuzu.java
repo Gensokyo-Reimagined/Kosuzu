@@ -7,12 +7,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.Objects;
 
 public final class Kosuzu extends JavaPlugin {
-    private static Kosuzu instance;
-
-    public static Kosuzu getInstance() {
-        return instance;
-    }
-
     public final FileConfiguration config = getConfig();
     public KosuzuRemembersEverything database;
 
@@ -20,8 +14,6 @@ public final class Kosuzu extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        instance = this;
-
         config.addDefault("deepl-api-url", "https://api-free.deepl.com/v2/translate");
         config.addDefault("deepl-api-key", "changeme");
         config.addDefault("default-language", "EN-US");
@@ -40,8 +32,8 @@ public final class Kosuzu extends JavaPlugin {
         saveConfig();
 
         var autocompleteHandler = new KosuzuHintsEverything();
-        var commandHandler = new KosuzuLearnsEverything();
-        var eventHandler = new KosuzuUnderstandsEverything();
+        var commandHandler = new KosuzuLearnsEverything(this);
+        var eventHandler = new KosuzuUnderstandsEverything(this);
 
         var command = Objects.requireNonNull(getCommand("kosuzu"));
         command.setTabCompleter(autocompleteHandler);
@@ -49,6 +41,6 @@ public final class Kosuzu extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(eventHandler,this);
 
-        database = new KosuzuRemembersEverything();
+        database = new KosuzuRemembersEverything(this);
     }
 }

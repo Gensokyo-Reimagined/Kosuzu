@@ -1,6 +1,7 @@
 package net.gensokyoreimagined.motoori;
 
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,14 +21,16 @@ import java.util.logging.Logger;
 public class KosuzuRemembersEverything {
     private final YamlConfiguration translations;
     private final BasicDataSource dataSource = new BasicDataSource();
+    private final FileConfiguration config;
     private final Logger logger;
 
     private boolean isSqlite = false;
 
-    public KosuzuRemembersEverything() {
-        logger = Kosuzu.getInstance().getLogger();
+    public KosuzuRemembersEverything(Kosuzu kosuzu) {
+        config = kosuzu.config;
+        logger = kosuzu.getLogger();
 
-        var translationFile = Kosuzu.getInstance().getResource("translations.yml");
+        var translationFile = kosuzu.getResource("translations.yml");
         if (translationFile == null) {
             throw new RuntimeException("Failed to find translations.yml! Is the plugin jar corrupted?");
         }
@@ -38,7 +41,7 @@ public class KosuzuRemembersEverything {
             throw new RuntimeException("Failed to load translations.yml! Is the plugin jar corrupted?", ex);
         }
 
-        var type = Kosuzu.getInstance().config.getString("storage.type");
+        var type = config.getString("storage.type");
         if (type == null) {
             type = "sqlite";
         }
@@ -55,7 +58,7 @@ public class KosuzuRemembersEverything {
                 throw new RuntimeException("Kosuzu can't remember how to use storage type: " + type);
         }
 
-        initializeDatabase();
+        initializeDatabase(kosuzu);
     }
 
     public String getTranslation(String key, String lang) {
@@ -64,7 +67,7 @@ public class KosuzuRemembersEverything {
         // If that doesn't exist either, it will return the key
 
         return translations.getString(key + "." + lang,
-                translations.getString(key + "." + Kosuzu.getInstance().config.getString("default-language", "EN-US"), key + "." + lang));
+                translations.getString(key + "." + config.getString("default-language", "EN-US"), key + "." + lang));
     }
 
     public Connection getConnection() throws SQLException {
@@ -72,7 +75,7 @@ public class KosuzuRemembersEverything {
     }
 
     private void initializeSqlite() {
-        var path = Kosuzu.getInstance().config.getString("storage.sqlite.file", "kosuzu.db");
+        var path = config.getString("storage.sqlite.file", "kosuzu.db");
 
         try {
             var pathObj = Path.of(path);
@@ -96,16 +99,16 @@ public class KosuzuRemembersEverything {
     }
 
     private void initializeMySQL() {
-        var host = Kosuzu.getInstance().config.getString("storage.mysql.host", "localhost");
-        var port = Kosuzu.getInstance().config.getInt("storage.mysql.port", 3306);
+        var host = config.getString("storage.mysql.host", "localhost");
+        var port = config.getInt("storage.mysql.port", 3306);
 
         if (port > 65535 || port < 0) {
             throw new RuntimeException("MySQL port is invalid! Writing to: " + port);
         }
 
-        var database = Kosuzu.getInstance().config.getString("storage.mysql.database", "kosuzu");
-        var username = Kosuzu.getInstance().config.getString("storage.mysql.username", "kosuzu");
-        var password = Kosuzu.getInstance().config.getString("storage.mysql.password", "changeme");
+        var database = config.getString("storage.mysql.database", "kosuzu");
+        var username = config.getString("storage.mysql.username", "kosuzu");
+        var password = config.getString("storage.mysql.password", "changeme");
 
         try {
             dataSource.setUrl("jdbc:mysql://" + host + ":" + port + "/" + database);
@@ -120,8 +123,8 @@ public class KosuzuRemembersEverything {
         }
     }
 
-    private void initializeDatabase() {
-        var initialization = Kosuzu.getInstance().getResource("dbinit.sql");
+    private void initializeDatabase(Kosuzu kosuzu) {
+        var initialization = kosuzu.getResource("dbinit.sql");
         if (initialization == null) {
             throw new RuntimeException("Failed to find dbinit.sql! Is the plugin jar corrupted?");
         }
@@ -182,7 +185,7 @@ public class KosuzuRemembersEverything {
             logger.severe(e.getMessage());
         }
 
-        return Kosuzu.getInstance().config.getString("default-language", "EN-US");
+        return config.getString("default-language", "EN-US");
     }
 
     @NotNull
@@ -205,7 +208,7 @@ public class KosuzuRemembersEverything {
             logger.severe(e.getMessage());
         }
 
-        return List.of(Kosuzu.getInstance().config.getString("default-language", "EN-US"));
+        return List.of(config.getString("default-language", "EN-US"));
     }
 
     public void setUserDefaultLanguage(UUID uuid, String lang) {
