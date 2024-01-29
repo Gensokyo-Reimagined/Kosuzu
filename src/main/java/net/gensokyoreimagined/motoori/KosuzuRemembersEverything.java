@@ -5,20 +5,20 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Logger;
+import static net.gensokyoreimagined.motoori.KosuzuDatabaseModels.*;
 
-public class KosuzuRemembersEverything {
+public class KosuzuRemembersEverything implements Closeable {
     private final YamlConfiguration translations;
     private final BasicDataSource dataSource = new BasicDataSource();
     private final FileConfiguration config;
@@ -32,13 +32,13 @@ public class KosuzuRemembersEverything {
 
         var translationFile = kosuzu.getResource("translations.yml");
         if (translationFile == null) {
-            throw new RuntimeException("Failed to find translations.yml! Is the plugin jar corrupted?");
+            throw new KosuzuException("Failed to find translations.yml! Is the plugin jar corrupted?");
         }
 
         try (var reader = new InputStreamReader(translationFile)) {
             translations = YamlConfiguration.loadConfiguration(reader);
         } catch (IOException ex) {
-            throw new RuntimeException("Failed to load translations.yml! Is the plugin jar corrupted?", ex);
+            throw new KosuzuException("Failed to load translations.yml! Is the plugin jar corrupted?", ex);
         }
 
         var type = config.getString("storage.type");
@@ -55,7 +55,7 @@ public class KosuzuRemembersEverything {
                 initializeMySQL();
                 break;
             default:
-                throw new RuntimeException("Kosuzu can't remember how to use storage type: " + type);
+                throw new KosuzuException("Kosuzu can't remember how to use storage type: " + type);
         }
 
         initializeDatabase(kosuzu);
@@ -84,7 +84,7 @@ public class KosuzuRemembersEverything {
                 Files.createFile(pathObj);
         } catch (IOException e) {
             logger.severe("Failed to create SQLite database file! Maybe check your permissions? Writing to: " + path);
-            throw new RuntimeException(e);
+            throw new KosuzuException(e);
         }
 
         try {
@@ -94,7 +94,7 @@ public class KosuzuRemembersEverything {
             dataSource.setMaxOpenPreparedStatements(50);
         } catch (Exception e) {
             logger.severe("Failed to connect to SQLite database! Writing to: " + path);
-            throw new RuntimeException(e);
+            throw new KosuzuException(e);
         }
     }
 
@@ -103,7 +103,7 @@ public class KosuzuRemembersEverything {
         var port = config.getInt("storage.mysql.port", 3306);
 
         if (port > 65535 || port < 0) {
-            throw new RuntimeException("MySQL port is invalid! Writing to: " + port);
+            throw new KosuzuException("MySQL port is invalid! Writing to: " + port);
         }
 
         var database = config.getString("storage.mysql.database", "kosuzu");
@@ -111,6 +111,13 @@ public class KosuzuRemembersEverything {
         var password = config.getString("storage.mysql.password", "changeme");
 
         try {
+            // Initialize the schema before setting up pool
+            var connection = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/", username, password);
+            var statement = connection.createStatement();
+            statement.execute("CREATE SCHEMA IF NOT EXISTS `" + database + "`");
+            statement.close();
+            connection.close();
+
             dataSource.setUrl("jdbc:mysql://" + host + ":" + port + "/" + database);
             dataSource.setUsername(username);
             dataSource.setPassword(password);
@@ -119,14 +126,14 @@ public class KosuzuRemembersEverything {
             dataSource.setMaxOpenPreparedStatements(100);
         } catch (Exception e) {
             logger.severe("Failed to connect to MySQL database! Connecting to: " + host + ":" + port + "/" + database);
-            throw new RuntimeException(e);
+            throw new KosuzuException(e);
         }
     }
 
     private void initializeDatabase(Kosuzu kosuzu) {
         var initialization = kosuzu.getResource("dbinit.sql");
         if (initialization == null) {
-            throw new RuntimeException("Failed to find dbinit.sql! Is the plugin jar corrupted?");
+            throw new KosuzuException("Failed to find dbinit.sql! Is the plugin jar corrupted?");
         }
 
         String sql;
@@ -134,7 +141,7 @@ public class KosuzuRemembersEverything {
         try {
             sql = new String(initialization.readAllBytes());
         } catch (IOException ex) {
-            throw new RuntimeException("Failed to load dbinit.sql! Is the plugin jar corrupted?", ex);
+            throw new KosuzuException("Failed to load dbinit.sql! Is the plugin jar corrupted?", ex);
         }
 
         var split = sql.split(";");
@@ -146,7 +153,10 @@ public class KosuzuRemembersEverything {
                 }
             }
 
-            for (var language : KosuzuHintsEverything.LANGUAGES) {
+            // Get all codes from the translations file
+            var keys = Objects.requireNonNull(translations.getConfigurationSection("language.english")).getKeys(false);
+
+            for (var language : keys) {
                 try (var insert = connection.prepareStatement(s("INSERT IGNORE INTO `language` (`code`, `native_name`, `english_name`) VALUES (?, ?, ?)"))) {
                     insert.setString(1, language);
                     insert.setString(2, getTranslation("language.native", language));
@@ -156,7 +166,7 @@ public class KosuzuRemembersEverything {
             }
         } catch (SQLException e) {
             logger.severe("Failed to initialize database!");
-            throw new RuntimeException(e);
+            throw new KosuzuException(e);
         }
     }
 
@@ -214,7 +224,7 @@ public class KosuzuRemembersEverything {
     public void setUserDefaultLanguage(UUID uuid, String lang) {
         try (var connection = getConnection()) {
             // i want to do ON DUPLICATE KEY UPDATE, but ugh compatibility
-            try (var statement = connection.prepareStatement(s("INSERT IGNORE INTO `user` (`uuid`, `default_language`) VALUES (?, ?); UPDATE `user` SET `default_language` = ? WHERE `uuid` = ?;"))) {
+            try (var statement = connection.prepareStatement(s("INSERT IGNORE INTO `user` (`uuid`, `default_language`) VALUES (?, ?);"))) {
                 statement.setString(1, uuid.toString());
                 statement.setString(2, lang);
                 statement.execute();
@@ -227,6 +237,48 @@ public class KosuzuRemembersEverything {
             }
         } catch (SQLException e) {
             logger.severe("Failed to set user default language!");
+            logger.severe(e.getMessage());
+        }
+    }
+
+    private Collection<Language> languages;
+
+    /**
+     * Gets a list of languages supported by Kosuzu.
+     * Note that the first call will be cached and saved, as languages cannot be modified on the fly.
+     * @return An unmodifiable list of languages.
+     */
+    public Collection<Language> getLanguages() {
+        if (languages != null)
+            return languages;
+
+        try (var connection = getConnection()) {
+            try (var statement = connection.prepareStatement("SELECT `code`, `native_name`, `english_name` FROM `language`")) {
+                var result = statement.executeQuery();
+                var output = new ArrayList<Language>();
+
+                while (result.next()) {
+                    var language = new Language(result.getString("code"), result.getString("native_name"), result.getString("english_name"));
+                    output.add(language);
+                }
+
+                languages = List.copyOf(output);
+                return languages;
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get user languages!");
+            logger.severe(e.getMessage());
+        }
+
+        throw new KosuzuException("Failed to get languages!");
+    }
+
+    @Override
+    public void close() {
+        try {
+            dataSource.close();
+        } catch (SQLException e) {
+            logger.severe("Failed to close database connection!");
             logger.severe(e.getMessage());
         }
     }

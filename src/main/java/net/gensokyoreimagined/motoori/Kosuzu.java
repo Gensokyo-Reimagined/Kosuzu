@@ -31,7 +31,9 @@ public final class Kosuzu extends JavaPlugin {
         config.options().copyDefaults(true);
         saveConfig();
 
-        var autocompleteHandler = new KosuzuHintsEverything();
+        database = new KosuzuRemembersEverything(this);
+
+        var autocompleteHandler = new KosuzuHintsEverything(this);
         var commandHandler = new KosuzuLearnsEverything(this);
         var eventHandler = new KosuzuUnderstandsEverything(this);
 
@@ -40,7 +42,10 @@ public final class Kosuzu extends JavaPlugin {
         command.setExecutor(commandHandler);
 
         getServer().getPluginManager().registerEvents(eventHandler,this);
+    }
 
-        database = new KosuzuRemembersEverything(this);
+    @Override
+    public void onDisable() {
+        database.close();
     }
 }

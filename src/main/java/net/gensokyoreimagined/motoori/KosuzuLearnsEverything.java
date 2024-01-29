@@ -23,7 +23,7 @@ public class KosuzuLearnsEverything implements CommandExecutor {
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("language")) {
+        if (args[0].equalsIgnoreCase("default")) {
             changeUserLanguage(sender, args);
             return true;
         }
@@ -54,16 +54,32 @@ public class KosuzuLearnsEverything implements CommandExecutor {
             return;
         }
 
-        var language = args[1].toUpperCase();
+        if (args == null || args.length < 2) {
+            invalidSubcommand(sender);
+            return;
+        }
 
-        if (KosuzuHintsEverything.LANGUAGES.contains(language)) {
-            database.setUserDefaultLanguage(player.getUniqueId(), language);
+        StringBuilder language = new StringBuilder();
+
+        for (int i = 1; i < args.length; i++) {
+            language.append(args[i]).append(" ");
+        }
+
+        language.delete(language.length() - 1, language.length()); // Remove trailing space
+
+        var languages = database.getLanguages();
+        var matchingLanguage = languages.stream().filter(lang -> lang.getNativeName().contentEquals(language)).findFirst();
+
+        if (matchingLanguage.isPresent()) {
+            var code = matchingLanguage.get().getCode();
+
+            database.setUserDefaultLanguage(player.getUniqueId(), code);
 
             sender.sendMessage(
                 Component
                     .text()
                     .color(NamedTextColor.GREEN)
-                    .content(database.getTranslation("language.change.success", language))
+                    .content(database.getTranslation("language.change.success", code))
                     .build()
             );
         } else {
