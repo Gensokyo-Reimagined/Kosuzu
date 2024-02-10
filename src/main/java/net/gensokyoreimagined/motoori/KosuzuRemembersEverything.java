@@ -25,6 +25,7 @@ public class KosuzuRemembersEverything implements Closeable {
     private final Logger logger;
 
     private boolean isSqlite = false;
+    private boolean requiresInitialization = false;
 
     public KosuzuRemembersEverything(Kosuzu kosuzu) {
         config = kosuzu.config;
@@ -80,8 +81,10 @@ public class KosuzuRemembersEverything implements Closeable {
         try {
             var pathObj = Path.of(path);
 
-            if (!Files.exists(pathObj))
+            if (!Files.exists(pathObj)) {
                 Files.createFile(pathObj);
+                requiresInitialization = true;
+            }
         } catch (IOException e) {
             logger.severe("Failed to create SQLite database file! Maybe check your permissions? Writing to: " + path);
             throw new KosuzuException(e);
@@ -113,8 +116,18 @@ public class KosuzuRemembersEverything implements Closeable {
         try {
             // Initialize the schema before setting up pool
             var connection = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/", username, password);
-            var statement = connection.createStatement();
-            statement.execute("CREATE SCHEMA IF NOT EXISTS `" + database + "`");
+
+            var statement = connection.prepareStatement("SHOW DATABASES LIKE ?");
+            statement.setString(1, database);
+            var result = statement.executeQuery();
+            if (!result.next()) {
+                requiresInitialization = true;
+            }
+            statement.close();
+
+            statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS ?");
+            statement.setString(1, database);
+            statement.execute();
             statement.close();
             connection.close();
 
@@ -131,6 +144,8 @@ public class KosuzuRemembersEverything implements Closeable {
     }
 
     private void initializeDatabase(Kosuzu kosuzu) {
+        if (!requiresInitialization) return;
+
         var initialization = kosuzu.getResource("dbinit.sql");
         if (initialization == null) {
             throw new KosuzuException("Failed to find dbinit.sql! Is the plugin jar corrupted?");

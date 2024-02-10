@@ -46,6 +46,7 @@ public final class Kosuzu extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        database.close();
+        if (database != null)
+            database.close();
     }
 }
