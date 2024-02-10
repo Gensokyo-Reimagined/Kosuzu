@@ -125,8 +125,7 @@ public class KosuzuRemembersEverything implements Closeable {
             }
             statement.close();
 
-            statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS ?");
-            statement.setString(1, database);
+            statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS `" + database + "`");
             statement.execute();
             statement.close();
             connection.close();
@@ -268,7 +267,7 @@ public class KosuzuRemembersEverything implements Closeable {
             return languages;
 
         try (var connection = getConnection()) {
-            try (var statement = connection.prepareStatement("SELECT `code`, `native_name`, `english_name` FROM `language`")) {
+            try (var statement = connection.prepareStatement("SELECT `code`, `native_name`, `english_name` FROM `language` ORDER BY `native_name`;")) {
                 var result = statement.executeQuery();
                 var output = new ArrayList<Language>();
 

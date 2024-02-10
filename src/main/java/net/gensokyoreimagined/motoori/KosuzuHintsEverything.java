@@ -11,11 +11,10 @@ import java.util.List;
 
 public class KosuzuHintsEverything implements TabCompleter {
 
-    private final List<String> LANGUAGES;
+    private final Collection<KosuzuDatabaseModels.Language> LANGUAGES;
 
     public KosuzuHintsEverything(Kosuzu kosuzu) {
-        var languages = kosuzu.database.getLanguages();
-        LANGUAGES = languages.stream().map(KosuzuDatabaseModels.Language::getNativeName).toList();
+        LANGUAGES = kosuzu.database.getLanguages();
     }
 
     @Override
@@ -25,7 +24,14 @@ public class KosuzuHintsEverything implements TabCompleter {
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("default")) {
-            return LANGUAGES;
+            var query = args[1].toLowerCase();
+
+            return
+                LANGUAGES
+                    .stream()
+                    .filter(l -> l.getCode().toLowerCase().contains(query) || l.getNativeName().toLowerCase().contains(query) || l.getEnglishName().toLowerCase().contains(query))
+                    .map(KosuzuDatabaseModels.Language::getNativeName)
+                    .toList();
         }
 
         return null;

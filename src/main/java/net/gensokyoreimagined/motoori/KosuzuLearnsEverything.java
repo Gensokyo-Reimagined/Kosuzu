@@ -34,22 +34,14 @@ public class KosuzuLearnsEverything implements CommandExecutor {
 
     private static void invalidSubcommand(@NotNull CommandSender sender) {
         sender.sendMessage(
-            Component
-                .text()
-                .color(NamedTextColor.RED)
-                .content("Usage: /kosuzu language <langcode>")
-                .build()
+            Kosuzu.HEADER.append(Component.text("/kosuzu default <lang>", NamedTextColor.RED))
         );
     }
 
     private void changeUserLanguage(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(
-                Component
-                    .text()
-                    .color(NamedTextColor.RED)
-                    .content("bruh just copy-paste the text into DeepL")
-                    .build()
+                Kosuzu.HEADER.append(Component.text("bruh just copy-paste the text into DeepL", NamedTextColor.RED))
             );
             return;
         }
@@ -62,13 +54,16 @@ public class KosuzuLearnsEverything implements CommandExecutor {
         StringBuilder language = new StringBuilder();
 
         for (int i = 1; i < args.length; i++) {
-            language.append(args[i]).append(" ");
+            language.append(args[i].toLowerCase()).append(" ");
         }
 
         language.delete(language.length() - 1, language.length()); // Remove trailing space
 
         var languages = database.getLanguages();
-        var matchingLanguage = languages.stream().filter(lang -> lang.getNativeName().contentEquals(language)).findFirst();
+        var matchingLanguage = languages
+                .stream()
+                .filter(l -> l.getCode().toLowerCase().contains(language) || l.getNativeName().toLowerCase().contains(language) || l.getEnglishName().toLowerCase().contains(language))
+                .findFirst();
 
         if (matchingLanguage.isPresent()) {
             var code = matchingLanguage.get().getCode();
@@ -76,21 +71,13 @@ public class KosuzuLearnsEverything implements CommandExecutor {
             database.setUserDefaultLanguage(player.getUniqueId(), code);
 
             sender.sendMessage(
-                Component
-                    .text()
-                    .color(NamedTextColor.GREEN)
-                    .content(database.getTranslation("language.change.success", code))
-                    .build()
+                Kosuzu.HEADER.append(Component.text(database.getTranslation("language.change.success", code), NamedTextColor.GREEN))
             );
         } else {
             var oldLang = database.getUserDefaultLanguage(player.getUniqueId());
 
             sender.sendMessage(
-                Component
-                    .text()
-                    .color(NamedTextColor.RED)
-                    .content(database.getTranslation("language.change.fail", oldLang))
-                    .build()
+                Kosuzu.HEADER.append(Component.text(database.getTranslation("language.change.fail", oldLang), NamedTextColor.RED))
             );
         }
     }

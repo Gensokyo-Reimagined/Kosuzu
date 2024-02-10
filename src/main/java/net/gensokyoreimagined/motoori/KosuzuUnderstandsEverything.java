@@ -60,10 +60,7 @@ public class KosuzuUnderstandsEverything implements Listener {
 
         if (translation == null) {
             player.sendMessage(
-                Component.text()
-                    .content(database.getTranslation("translate.fail", language))
-                    .color(NamedTextColor.RED)
-                    .build()
+                Kosuzu.HEADER.append(Component.text(database.getTranslation("translate.fail", language), NamedTextColor.RED))
             );
 
             return;

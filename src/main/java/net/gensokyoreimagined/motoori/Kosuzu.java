@@ -1,6 +1,9 @@
 package net.gensokyoreimagined.motoori;
 
 import com.google.gson.Gson;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -9,8 +12,11 @@ import java.util.Objects;
 public final class Kosuzu extends JavaPlugin {
     public final FileConfiguration config = getConfig();
     public KosuzuRemembersEverything database;
-
-    private static final Gson gson = new Gson();
+    
+    public static Component HEADER = Component
+            .text("[", NamedTextColor.GOLD)
+            .append(Component.text("Kosuzu", NamedTextColor.YELLOW, TextDecoration.BOLD))
+            .append(Component.text("] ", NamedTextColor.GOLD));
 
     @Override
     public void onEnable() {
