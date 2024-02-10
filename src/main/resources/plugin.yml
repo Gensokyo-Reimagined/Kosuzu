@@ -2,7 +2,7 @@ name: Kosuzu
 version: '${version}'
 main: net.gensokyoreimagined.motoori.Kosuzu
 api-version: '1.20'
-softdepend:
+depend:
   - ProtocolLib
 commands:
   kosuzu:
