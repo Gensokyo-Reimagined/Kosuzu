@@ -1,3 +1,18 @@
+// Kosuzu Copyright (C) 2024 Gensokyo Reimagined
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 package net.gensokyoreimagined.motoori;
 
 import com.comphenix.protocol.PacketType;
@@ -54,25 +69,25 @@ public final class Kosuzu extends JavaPlugin {
         command.setTabCompleter(autocompleteHandler);
         command.setExecutor(commandHandler);
 
-        ProtocolManager manager = ProtocolLibrary.getProtocolManager();
-        manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
-            @Override
-            public void onPacketSending(PacketEvent event) {
-                var packet = event.getPacket();
-                var message = packet.getChatComponents().read(0);
-                getLogger().info("CHAT EVENT " + message.getJson());
-            }
-        });
-
-        manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
-            @Override
-            public void onPacketSending(PacketEvent event) {
-                var packet = event.getPacket();
-                var message = packet.getChatComponents().read(0);
-                var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
-                getLogger().info("SYSTEM CHAT EVENT " + message.getJson());
-            }
-        });
+        // ProtocolManager manager = ProtocolLibrary.getProtocolManager();
+        // manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
+        //     @Override
+        //     public void onPacketSending(PacketEvent event) {
+        //         var packet = event.getPacket();
+        //         var message = packet.getChatComponents().read(0);
+        //         getLogger().info("CHAT EVENT " + message.getJson());
+        //     }
+        // });
+        //
+        // manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
+        //     @Override
+        //     public void onPacketSending(PacketEvent event) {
+        //         var packet = event.getPacket();
+        //         var message = packet.getChatComponents().read(0);
+        //         var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
+        //         getLogger().info("SYSTEM CHAT EVENT " + message.getJson());
+        //     }
+        // });
 
         getServer().getPluginManager().registerEvents(eventHandler,this);
     }
