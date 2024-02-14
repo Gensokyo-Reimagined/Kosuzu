@@ -227,6 +227,31 @@ public class KosuzuRemembersEverything implements Closeable {
         return config.getString("default-language", "EN-US");
     }
 
+    public boolean isNewUser(UUID uuid, String username) {
+        boolean isNew = false;
+
+        try (var connection = getConnection()) {
+            try (var statement = connection.prepareStatement("SELECT `uuid` FROM `user` WHERE `uuid` = ?")) {
+                statement.setString(1, uuid.toString());
+                var result = statement.executeQuery();
+                isNew = !result.next();
+            }
+
+            if (isNew) {
+                try (var statement = connection.prepareStatement("INSERT INTO `user` (`uuid`, `last_known_name`) VALUES (?, ?)")) {
+                    statement.setString(1, uuid.toString());
+                    statement.setString(2, username);
+                    statement.execute();
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to check if user is new!");
+            logger.severe(e.getMessage());
+        }
+
+        return isNew;
+    }
+
     @NotNull
     public Collection<String> getUserLanguages(String uuid) {
         try (var connection = getConnection()) {

@@ -146,12 +146,16 @@ public class KosuzuTranslatesEverything {
     }
 
     public DeepLTranslation translate(String input, @Nullable String language) {
-        var translation = translateViaMobileRPC(input, language);
-        if (translation == null) {
-            logger.warning("Falling back to DeepL API");
-            translation = translateViaAPI(input, language);
+        if (config.getBoolean("use-deepl-mobile")) {
+            var translation = translateViaMobileRPC(input, language);
+
+            if (translation == null) {
+                logger.warning("Falling back to DeepL API");
+            } else {
+                return translation;
+            }
         }
 
-        return translation;
+        return translateViaAPI(input, language);
     }
 }

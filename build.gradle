@@ -1,121 +1,116 @@
 plugins {
-	id 'java'
-	id 'com.github.johnrengelman.shadow' version '8.1.1'
-	id 'maven-publish'
-	id 'io.papermc.paperweight.userdev' version '1.5.11'
-	id 'com.diffplug.spotless' version '6.25.0'
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'maven-publish'
+    id 'io.papermc.paperweight.userdev' version '1.5.11'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'net.gensokyoreimagined'
 version = '1.1.0-SNAPSHOT'
 
 repositories {
-	mavenCentral()
-	maven {
-		name = "papermc-repo"
-		url = "https://repo.papermc.io/repository/maven-public/"
-	}
-	maven {
-		name = "sonatype"
-		url = "https://oss.sonatype.org/content/groups/public/"
-	}
-	maven {
-		name = "dmulloy2-repo"
-		url = "https://repo.dmulloy2.net/repository/public/"
-	}
-	maven {
-		name = "placeholderapi-repo"
-		url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
-	}
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+    maven {
+        name = "sonatype"
+        url = "https://oss.sonatype.org/content/groups/public/"
+    }
+    maven {
+        name = "dmulloy2-repo"
+        url = "https://repo.dmulloy2.net/repository/public/"
+    }
 }
 
 dependencies {
-	compileOnly "com.comphenix.protocol:ProtocolLib:5.2.0-SNAPSHOT"
-	compileOnly "me.clip:placeholderapi:2.11.5"
-	implementation 'com.github.mizosoft.methanol:methanol:1.7.0'
-	implementation 'com.github.mizosoft.methanol:methanol-brotli:1.7.0'
-	implementation "org.xerial:sqlite-jdbc:3.45.0.0"
-	implementation "com.mysql:mysql-connector-j:8.3.0"
-	implementation "org.apache.commons:commons-dbcp2:2.11.0"
-	implementation "org.apache.commons:commons-pool2:2.12.0" // can't reload plugin without this
-	paperweight.paperDevBundle("1.20.4-R0.1-SNAPSHOT")
+    compileOnly "com.comphenix.protocol:ProtocolLib:5.2.0-SNAPSHOT"
+    implementation 'com.github.mizosoft.methanol:methanol:1.7.0'
+    implementation 'com.github.mizosoft.methanol:methanol-brotli:1.7.0'
+    implementation "org.xerial:sqlite-jdbc:3.45.0.0"
+    implementation "com.mysql:mysql-connector-j:8.3.0"
+    implementation "org.apache.commons:commons-dbcp2:2.11.0"
+    implementation "org.apache.commons:commons-pool2:2.12.0" // can't reload plugin without this
+    paperweight.paperDevBundle("1.20.4-R0.1-SNAPSHOT")
 }
 
 shadowJar {
-	project.configurations.runtimeClasspath.canBeResolved = true
-	configurations = [project.configurations.runtimeClasspath]
+    project.configurations.runtimeClasspath.canBeResolved = true
+    configurations = [project.configurations.runtimeClasspath]
 }
 
 def targetJavaVersion = 17
 java {
-	def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-	sourceCompatibility = javaVersion
-	targetCompatibility = javaVersion
-	if (JavaVersion.current() < javaVersion) {
-		toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-	}
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
-	if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-		options.release.set(targetJavaVersion)
-	}
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
 }
 
 tasks.assemble {
-	dependsOn(reobfJar)
+    dependsOn(reobfJar)
 }
 
 processResources {
-	def props = [version: version]
-	inputs.properties props
-	filteringCharset 'UTF-8'
-	filesMatching('plugin.yml') {
-		expand props
-	}
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
 }
 
 configurations {
-	create("conf")
+    create("conf")
 }
 
 def jarFile = file("build/libs/%s-%s.jar".formatted(project.name, project.version))
 def jarArtifact = artifacts.add("conf", jarFile) {
-	type = "jar"
-	builtBy("jar")
+    type = "jar"
+    builtBy("jar")
 }
 
 publishing {
-publications {
-	maven(MavenPublication) {
-		artifact jarArtifact
-		group "plugins"
-	}
-}
+    publications {
+        maven(MavenPublication) {
+            artifact jarArtifact
+            group "plugins"
+        }
+    }
 
-repositories {
-	maven {
-		name = "gensorepo"
-		credentials {
-			username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
-			password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
-		}
-		// url to the releases maven repository
-		url = uri("https://repo.gensokyoreimagined.net/")
-	}
-}
+    repositories {
+        maven {
+            name = "gensorepo"
+            credentials {
+                username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+                password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+            }
+            // url to the releases maven repository
+            url = uri("https://repo.gensokyoreimagined.net/")
+        }
+    }
 }
 
 spotless {
-	format 'misc', {
-		target '*.gradle', '.gitattributes', '.gitignore'
+    format 'misc', {
+        target '*.gradle', '.gitattributes', '.gitignore'
 
-		trimTrailingWhitespace()
-		indentWithSpaces(4)
-		endWithNewline()
-	}
+        trimTrailingWhitespace()
+        indentWithSpaces(4)
+        endWithNewline()
+    }
 
-	java {
-		licenseHeaderFile 'LICENSE_header.txt'
-	}
+    java {
+        licenseHeaderFile 'LICENSE_header.txt'
+    }
 }

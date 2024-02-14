@@ -21,7 +21,6 @@ import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
-import com.google.gson.Gson;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -35,6 +34,9 @@ public final class Kosuzu extends JavaPlugin {
     public final FileConfiguration config = getConfig();
     public KosuzuRemembersEverything database;
 
+    private boolean papiGeoip = false;
+    public boolean canUsePAPIGeoIP() { return papiGeoip; }
+
     public static Component HEADER = Component
             .text("[", NamedTextColor.GOLD)
             .append(Component.text("Kosuzu", NamedTextColor.YELLOW, TextDecoration.BOLD))
@@ -42,6 +44,7 @@ public final class Kosuzu extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        config.addDefault("use-deepl-mobile", true);
         config.addDefault("deepl-api-url", "https://api-free.deepl.com/v2/translate");
         config.addDefault("deepl-api-key", "changeme");
         config.addDefault("default-language", "EN-US");
@@ -69,25 +72,27 @@ public final class Kosuzu extends JavaPlugin {
         command.setTabCompleter(autocompleteHandler);
         command.setExecutor(commandHandler);
 
-        // ProtocolManager manager = ProtocolLibrary.getProtocolManager();
-        // manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
-        //     @Override
-        //     public void onPacketSending(PacketEvent event) {
-        //         var packet = event.getPacket();
-        //         var message = packet.getChatComponents().read(0);
-        //         getLogger().info("CHAT EVENT " + message.getJson());
-        //     }
-        // });
-        //
-        // manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
-        //     @Override
-        //     public void onPacketSending(PacketEvent event) {
-        //         var packet = event.getPacket();
-        //         var message = packet.getChatComponents().read(0);
-        //         var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
-        //         getLogger().info("SYSTEM CHAT EVENT " + message.getJson());
-        //     }
-        // });
+        ProtocolManager manager = ProtocolLibrary.getProtocolManager();
+        manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                var player = event.getPlayer();
+                var packet = event.getPacket();
+                var message = packet.getChatComponents().read(0);
+                // getLogger().info("CHAT EVENT TO " + player.getName() + " " + message.getJson());
+            }
+        });
+
+        manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                var player = event.getPlayer();
+                var packet = event.getPacket();
+                var message = packet.getChatComponents().read(0);
+                var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
+                // getLogger().info("SYSTEM CHAT EVENT TO " + player.getName() + " " + message.getJson());
+            }
+        });
 
         getServer().getPluginManager().registerEvents(eventHandler,this);
     }

@@ -21,6 +21,7 @@ import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -35,10 +36,15 @@ public class KosuzuHintsEverything implements TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 1) {
-            return List.of("default", "");
+            var options = new ArrayList<String>();
+            options.add("default");
+
+            if (sender.hasPermission("kosuzu.translate.auto")) {
+                options.add("auto");
+            }
         }
 
-        if (args.length == 2 && args[0].equalsIgnoreCase("default")) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("default") && sender.hasPermission("kosuzu.translate")) {
             var query = args[1].toLowerCase();
 
             return
@@ -47,6 +53,10 @@ public class KosuzuHintsEverything implements TabCompleter {
                     .filter(l -> l.getCode().toLowerCase().contains(query) || l.getNativeName().toLowerCase().contains(query) || l.getEnglishName().toLowerCase().contains(query))
                     .map(KosuzuDatabaseModels.Language::getNativeName)
                     .toList();
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("auto") && sender.hasPermission("kosuzu.translate.auto")) {
+            return List.of("on", "off");
         }
 
         return null;

@@ -27,6 +27,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -59,6 +60,27 @@ public class KosuzuUnderstandsEverything implements Listener {
                     )
                 )
         );
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerJoin(@NotNull PlayerJoinEvent event) {
+        var player = event.getPlayer();
+        var uuid = player.getUniqueId();
+        var name = player.getName();
+
+
+
+        // TODO translate this message
+        if (database.isNewUser(uuid, name)) {
+            player.sendMessage(
+                Kosuzu.HEADER
+                    .append(Component.text("Welcome to the server, " + name + "!", NamedTextColor.GRAY))
+                    .append(Component.newline())
+                    .append(Component.text("Your default language is " + database.getUserDefaultLanguage(uuid) + ".", NamedTextColor.GRAY))
+                    .append(Component.newline())
+                    .append(Component.text("Use /kosuzu default to change your settings.", NamedTextColor.GRAY))
+            );
+        }
     }
 
     private void translateCallback(AsyncChatEvent event, Audience player) {

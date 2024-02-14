@@ -8,3 +8,19 @@ commands:
   kosuzu:
     usage: /kosuzu <subcommand> <options>
     description: Control the translation system
+    default: true
+permissions:
+  kosuzu.admin:
+    description: Configure and manage the translation system
+    default: op
+  kosuzu.translate:
+    description: Translate text
+    default: true
+  kosuzu.translate.auto:
+    description: Automatically translate text for other languages
+    default: op
+  kosuzu.translate.auto.force:
+    description: Force automatic translation to configured language for all messages
+    default: op
+    children:
+      kosuzu.translate.auto: true
