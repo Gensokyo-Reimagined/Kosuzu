@@ -30,7 +30,7 @@ jobs:
     - name: Gradle plz build
       uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
       with:
-        arguments: build shadowJar
+        arguments: spotlessApply build shadowJar
 
     - name: GitHub save this jar for me kthx
       uses: actions/upload-artifact@v3
