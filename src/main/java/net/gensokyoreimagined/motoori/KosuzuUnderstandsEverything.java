@@ -15,13 +15,21 @@
 
 package net.gensokyoreimagined.motoori;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
 import com.google.common.util.concurrent.RateLimiter;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -40,8 +48,24 @@ public class KosuzuUnderstandsEverything implements Listener {
     public KosuzuUnderstandsEverything(Kosuzu kosuzu) {
         translator = new KosuzuTranslatesEverything(kosuzu);
         database = kosuzu.database;
+
+        ProtocolManager manager = ProtocolLibrary.getProtocolManager();
+        manager.addPacketListener(new PacketAdapter(kosuzu, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                KosuzuUnderstandsEverything.this.onPacketSending(event);
+            }
+        });
+
+        manager.addPacketListener(new PacketAdapter(kosuzu, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                KosuzuUnderstandsEverything.this.onPacketSending(event);
+            }
+        });
     }
 
+    // To be deprecated, replaced by ProtocolLib
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerMessage(@NotNull AsyncChatEvent event) {
         // problem with eager translation: can't adjust the message
@@ -56,10 +80,20 @@ public class KosuzuUnderstandsEverything implements Listener {
                 )
                 .clickEvent(
                     ClickEvent.callback(
-                        (player) -> translateCallback(event, player)
+                        (player) -> translateCallback(event, player),
+                            ClickCallback.Options.builder().uses(69420).build()
                     )
                 )
         );
+    }
+
+    // Called by ProtocolLib
+    public void onPacketSending(PacketEvent event) {
+        var player = event.getPlayer();
+        var packet = event.getPacket();
+        var message = packet.getChatComponents().read(0);
+        var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
+        // getLogger().info("SYSTEM CHAT EVENT TO " + player.getName() + " " + message.getJson());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -69,9 +103,20 @@ public class KosuzuUnderstandsEverything implements Listener {
         var name = player.getName();
 
 
-
         // TODO translate this message
         if (database.isNewUser(uuid, name)) {
+            String welcome;
+
+            var country = KosuzuKnowsWhereYouLive.getCountryCode(player);
+
+            if (country == null) {
+                welcome = database.getTranslation("welcome.new", null);
+            } else {
+                var languages = database.getLanguages();
+                var language = languages.stream().map(KosuzuDatabaseModels.Language::getCode).filter(code -> code.toUpperCase().contains(country.toUpperCase())).findFirst().orElse(null);
+                welcome = database.getTranslation("welcome.new", language);
+            }
+
             player.sendMessage(
                 Kosuzu.HEADER
                     .append(Component.text("Welcome to the server, " + name + "!", NamedTextColor.GRAY))

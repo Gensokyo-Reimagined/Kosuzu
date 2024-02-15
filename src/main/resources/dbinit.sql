@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `multilingual`
 CREATE TABLE IF NOT EXISTS `message`
 (
     `message_id` VARCHAR(36)  NOT NULL,
-    `text`       VARCHAR(256) NOT NULL, -- We don't explicitly know the language of the message, so we store it here
+    `text`       VARCHAR(2048) NOT NULL, -- We don't explicitly know the language of the message, so we store it here
     PRIMARY KEY (`message_id`),
     UNIQUE (`text`)
 );

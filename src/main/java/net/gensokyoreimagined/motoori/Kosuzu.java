@@ -28,6 +28,8 @@ import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public final class Kosuzu extends JavaPlugin {
@@ -59,6 +61,9 @@ public final class Kosuzu extends JavaPlugin {
         config.addDefault("storage.mysql.username", "kosuzu");
         config.addDefault("storage.mysql.password", "changeme");
 
+        var regexDefaults = new HashMap<String, Object>();
+        regexDefaults.put("match.include", "https?://[-a-zA-Z0-9@:%._\\+~#?&//=]+");
+
         config.options().copyDefaults(true);
         saveConfig();
 
@@ -71,28 +76,6 @@ public final class Kosuzu extends JavaPlugin {
         var command = Objects.requireNonNull(getCommand("kosuzu"));
         command.setTabCompleter(autocompleteHandler);
         command.setExecutor(commandHandler);
-
-        ProtocolManager manager = ProtocolLibrary.getProtocolManager();
-        manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
-            @Override
-            public void onPacketSending(PacketEvent event) {
-                var player = event.getPlayer();
-                var packet = event.getPacket();
-                var message = packet.getChatComponents().read(0);
-                // getLogger().info("CHAT EVENT TO " + player.getName() + " " + message.getJson());
-            }
-        });
-
-        manager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
-            @Override
-            public void onPacketSending(PacketEvent event) {
-                var player = event.getPlayer();
-                var packet = event.getPacket();
-                var message = packet.getChatComponents().read(0);
-                var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
-                // getLogger().info("SYSTEM CHAT EVENT TO " + player.getName() + " " + message.getJson());
-            }
-        });
 
         getServer().getPluginManager().registerEvents(eventHandler,this);
     }

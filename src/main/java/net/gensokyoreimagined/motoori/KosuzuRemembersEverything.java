@@ -19,6 +19,7 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -77,7 +78,7 @@ public class KosuzuRemembersEverything implements Closeable {
         initializeDatabase(kosuzu);
     }
 
-    public String getTranslation(String key, String lang) {
+    public String getTranslation(@NotNull String key, @Nullable String lang) {
         // Fetches the translation for a given key and language
         // If the translation doesn't exist, it will try to fetch the translation for the default language
         // If that doesn't exist either, it will return the key
@@ -178,6 +179,8 @@ public class KosuzuRemembersEverything implements Closeable {
         try (var connection = getConnection()) {
             try (var statement = connection.createStatement()) {
                 for (var query : split) {
+                    if (query.isBlank()) continue;
+
                     statement.execute(query);
                 }
             }
@@ -238,9 +241,10 @@ public class KosuzuRemembersEverything implements Closeable {
             }
 
             if (isNew) {
-                try (var statement = connection.prepareStatement("INSERT INTO `user` (`uuid`, `last_known_name`) VALUES (?, ?)")) {
+                try (var statement = connection.prepareStatement("INSERT INTO `user` (`uuid`, `last_known_name`, `default_language`) VALUES (?, ?, ?)")) {
                     statement.setString(1, uuid.toString());
                     statement.setString(2, username);
+                    statement.setString(3, config.getString("default-language", "EN-US"));
                     statement.execute();
                 }
             }
@@ -325,6 +329,42 @@ public class KosuzuRemembersEverything implements Closeable {
         }
 
         throw new KosuzuException("Failed to get languages!");
+    }
+
+    public @Nullable String getMessage(@NotNull UUID message) {
+        try (var connection = getConnection()) {
+            try (var statement = connection.prepareStatement("SELECT `text` FROM `message` WHERE `message_id` = ?")) {
+                statement.setString(1, message.toString());
+                var result = statement.executeQuery();
+                if (result.next()) {
+                    return result.getString("text");
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to get message!");
+            logger.severe(e.getMessage());
+        }
+
+        return null;
+    }
+
+    public @Nullable UUID addMessage(@NotNull String message) {
+        try (var connection = getConnection()) {
+            var uuid = UUID.randomUUID();
+
+            try (var statement = connection.prepareStatement("INSERT INTO `message` (`message_id`, `text`) VALUES (?, ?)")) {
+                statement.setString(1, uuid.toString());
+                statement.setString(2, message);
+                statement.execute();
+            }
+
+            return uuid;
+        } catch (SQLException e) {
+            logger.severe("Failed to add message!");
+            logger.severe(e.getMessage());
+        }
+
+        return null;
     }
 
     @Override
