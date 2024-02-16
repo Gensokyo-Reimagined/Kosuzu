@@ -27,9 +27,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 public class KosuzuKnowsWhereYouLive {
-    public static @Nullable String getCountryCode(Player player) {
+    private final Logger logger;
+
+    public KosuzuKnowsWhereYouLive(Kosuzu kosuzu) {
+        logger = kosuzu.getLogger();
+    }
+
+    public @Nullable String getCountryCode(Player player) {
         var address = player.getAddress();
         if (address == null) {
             return null;
@@ -43,13 +50,13 @@ public class KosuzuKnowsWhereYouLive {
      * @param ip The IP address
      * @return The country code, or null if the IP address is invalid or location is unknown
      */
-    public static @Nullable String getCountryCode(String ip) {
+    public @Nullable String getCountryCode(String ip) {
         if (ip == null) {
             return null;
         }
 
         if (ip.equals("127.0.0.1")) {
-            System.out.println("Localhost IP address detected from player; check forwarding on proxy?");
+            logger.warning("Localhost IP address detected from player; check forwarding on proxy?");
             return null;
         }
 

@@ -21,7 +21,6 @@ import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
-import com.google.common.util.concurrent.RateLimiter;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -31,38 +30,54 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 public class KosuzuUnderstandsEverything implements Listener {
-
+    private final Logger logger;
     private final KosuzuTranslatesEverything translator;
     private final KosuzuRemembersEverything database;
+    private final KosuzuKnowsWhereYouLive geolocation;
+
+    private final ArrayList<Pattern> regexes = new ArrayList<>();
+    private final Map<String, Map<UUID, Pattern>> placeholderRegexes = new HashMap<>();
     
     public KosuzuUnderstandsEverything(Kosuzu kosuzu) {
+        logger = kosuzu.getLogger();
         translator = new KosuzuTranslatesEverything(kosuzu);
         database = kosuzu.database;
+        geolocation = new KosuzuKnowsWhereYouLive(kosuzu);
 
         ProtocolManager manager = ProtocolLibrary.getProtocolManager();
         manager.addPacketListener(new PacketAdapter(kosuzu, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
             @Override
             public void onPacketSending(PacketEvent event) {
-                KosuzuUnderstandsEverything.this.onPacketSending(event);
+                KosuzuUnderstandsEverything.this.onPacketSending(event, false);
             }
         });
 
         manager.addPacketListener(new PacketAdapter(kosuzu, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
             @Override
             public void onPacketSending(PacketEvent event) {
-                KosuzuUnderstandsEverything.this.onPacketSending(event);
+                KosuzuUnderstandsEverything.this.onPacketSending(event, true);
             }
         });
+
+        prepareRegexes(kosuzu.getConfig());
     }
 
     // To be deprecated, replaced by ProtocolLib
@@ -88,12 +103,65 @@ public class KosuzuUnderstandsEverything implements Listener {
     }
 
     // Called by ProtocolLib
-    public void onPacketSending(PacketEvent event) {
+    private void onPacketSending(PacketEvent event, boolean isSystem) {
         var player = event.getPlayer();
         var packet = event.getPacket();
         var message = packet.getChatComponents().read(0);
         var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
-        // getLogger().info("SYSTEM CHAT EVENT TO " + player.getName() + " " + message.getJson());
+        // logger.info("A CHAT EVENT TO " + player.getName() + ": " + getTextMessage(component, isSystem, player));
+    }
+
+    private void prepareRegexes(@NotNull FileConfiguration config) {
+        var regexes = config.getStringList("match.include");
+
+        for (var regex : regexes) {
+            if (regex.contains("%username%")) {
+                placeholderRegexes.put(regex, new HashMap<>());
+            } else {
+                this.regexes.add(Pattern.compile(regex));
+            }
+        }
+
+        logger.info("Prepared " + this.regexes.size() + " regexes");
+    }
+
+    /**
+     * Extracts the text message from a chat component
+     * Also determines if we should translate the message
+     * @param component The chat component created from the message
+     * @param isSystem Whether the message is a system message
+     * @param player The player who sent the message
+     * @return The text message, or null if it could/should not be translated
+     */
+    private @Nullable String getTextMessage(Component component, boolean isSystem, Player player) {
+        var text =  PlainTextComponentSerializer.plainText().serialize(component);
+
+        logger.info("TEXT: " + text);
+
+        if (!isSystem) {
+            return text;
+        }
+
+        for (var pattern : regexes) {
+            var matcher = pattern.matcher(text);
+            if (matcher.matches()) {
+                return matcher.group(1);
+            }
+        }
+
+        for (var placeholder : placeholderRegexes.entrySet()) {
+            var regex = placeholder.getKey();
+            var cache = placeholder.getValue();
+
+            var pattern = cache.computeIfAbsent(player.getUniqueId(), (key) -> Pattern.compile(regex.replace("%username%", player.getName())));
+            var matcher = pattern.matcher(text);
+
+            if (matcher.matches()) {
+                return matcher.group(1);
+            }
+        }
+
+        return null;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -107,7 +175,7 @@ public class KosuzuUnderstandsEverything implements Listener {
         if (database.isNewUser(uuid, name)) {
             String welcome;
 
-            var country = KosuzuKnowsWhereYouLive.getCountryCode(player);
+            var country = geolocation.getCountryCode(player);
 
             if (country == null) {
                 welcome = database.getTranslation("welcome.new", null);
@@ -126,6 +194,14 @@ public class KosuzuUnderstandsEverything implements Listener {
                     .append(Component.text("Use /kosuzu default to change your settings.", NamedTextColor.GRAY))
             );
         }
+    }
+
+    @EventHandler
+    public void onPlayerDisconnect(@NotNull PlayerQuitEvent event) {
+        var player = event.getPlayer();
+
+        // Remove from cache
+        placeholderRegexes.values().forEach(map -> map.remove(player.getUniqueId()));
     }
 
     private void translateCallback(AsyncChatEvent event, Audience player) {

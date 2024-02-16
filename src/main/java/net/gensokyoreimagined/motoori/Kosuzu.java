@@ -15,21 +15,13 @@
 
 package net.gensokyoreimagined.motoori;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 
 public final class Kosuzu extends JavaPlugin {
@@ -61,8 +53,13 @@ public final class Kosuzu extends JavaPlugin {
         config.addDefault("storage.mysql.username", "kosuzu");
         config.addDefault("storage.mysql.password", "changeme");
 
-        var regexDefaults = new HashMap<String, Object>();
-        regexDefaults.put("match.include", "https?://[-a-zA-Z0-9@:%._\\+~#?&//=]+");
+        var regexDefaults = List.of(
+            "^<[^>]+> (.*)", // Vanilla
+            "^[^»]+» (.*)", // Discord
+            "^(?::build:|:dev_server:).+?: (.*)" // Chatty
+        );
+
+        config.addDefault("match.include", regexDefaults);
 
         config.options().copyDefaults(true);
         saveConfig();

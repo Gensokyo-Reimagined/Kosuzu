@@ -348,13 +348,37 @@ public class KosuzuRemembersEverything implements Closeable {
         return null;
     }
 
-    public @Nullable UUID addMessage(@NotNull String message) {
+    public @Nullable UUID addMessage(@NotNull String json, @NotNull String message, @NotNull UUID player) {
         try (var connection = getConnection()) {
+            // First cache the message, if necessary
+            // Then add the JSON to the database separately (player-specific)
+
+            UUID messageUUID = null;
+
+            try (var statement = connection.prepareStatement("SELECT message_id FROM `message` WHERE `text` = ?")) {
+                statement.setString(1, message);
+                var data = statement.executeQuery();
+                if (data.next()) {
+                    messageUUID = UUID.fromString(data.getString("message_id"));
+                }
+            }
+
+            if (messageUUID == null) {
+                messageUUID = UUID.randomUUID();
+                try (var statement = connection.prepareStatement("INSERT INTO `message` (`message_id`, `text`) VALUES (?, ?)")) {
+                    statement.setString(1, messageUUID.toString());
+                    statement.setString(2, message);
+                    statement.execute();
+                }
+            }
+
             var uuid = UUID.randomUUID();
 
-            try (var statement = connection.prepareStatement("INSERT INTO `message` (`message_id`, `text`) VALUES (?, ?)")) {
+            try (var statement = connection.prepareStatement("INSERT INTO `user_message` (`uuid`, `user_id`, `message_id`, `json_msg`) VALUES (?, ?, ?, ?)")) {
                 statement.setString(1, uuid.toString());
-                statement.setString(2, message);
+                statement.setString(2, player.toString());
+                statement.setString(3, messageUUID.toString());
+                statement.setString(4, json);
                 statement.execute();
             }
 

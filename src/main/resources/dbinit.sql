@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS `multilingual`
 CREATE TABLE IF NOT EXISTS `message`
 (
     `message_id` VARCHAR(36)  NOT NULL,
-    `text`       VARCHAR(2048) NOT NULL, -- We don't explicitly know the language of the message, so we store it here
+    `text`       VARCHAR(256) NOT NULL, -- We don't explicitly know the language of the message, so we store it here
+    `language`   VARCHAR(8), -- ISO 639-1 code of the message, NULL if the language is unknown
     PRIMARY KEY (`message_id`),
     UNIQUE (`text`)
 );
@@ -50,9 +51,9 @@ CREATE TABLE IF NOT EXISTS `user_message`
     `uuid`       VARCHAR(36) NOT NULL, -- Surrogate key
     `user_id`    VARCHAR(36) NOT NULL, -- To which user this message belongs
     `message_id` VARCHAR(36) NOT NULL, -- To which message this translation belongs
+    `json_msg`   JSON        NOT NULL, -- The JSON message from Minecraft
     PRIMARY KEY (`uuid`),
-
-    FOREIGN KEY (`uuid`) REFERENCES `user` (`uuid`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user` (`uuid`) ON DELETE CASCADE,
     FOREIGN KEY (`message_id`) REFERENCES `message` (`message_id`) ON DELETE CASCADE
 );
 
