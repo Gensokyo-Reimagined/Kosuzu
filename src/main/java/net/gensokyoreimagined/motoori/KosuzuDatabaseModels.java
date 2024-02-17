@@ -15,6 +15,8 @@
 
 package net.gensokyoreimagined.motoori;
 
+import org.jetbrains.annotations.Nullable;
+
 public class KosuzuDatabaseModels {
     public static class Language {
         private final String code;
@@ -30,5 +32,37 @@ public class KosuzuDatabaseModels {
         public String getCode() { return code; }
         public String getNativeName() { return nativeName; }
         public String getEnglishName() { return englishName; }
+    }
+
+    public static class Message {
+        private final String messageJson;
+        private final String textMessage;
+        private @Nullable String translatedTextLanguageCode;
+        private @Nullable String translatedTextMessage;
+        private final String languageCode;
+
+        public Message(String messageJson, String textMessage, @Nullable String translatedTextLanguageCode, @Nullable String translatedTextMessage, String languageCode) {
+            this.messageJson = messageJson;
+            this.textMessage = textMessage;
+            this.translatedTextLanguageCode = translatedTextLanguageCode;
+            this.translatedTextMessage = translatedTextMessage;
+            this.languageCode = languageCode;
+        }
+
+        public String getMessageJson() { return messageJson; }
+
+        public String getTextMessage() { return textMessage; }
+
+        public @Nullable String getTranslatedTextMessage() { return translatedTextMessage; }
+
+        public void loadTranslatedTextMessage(KosuzuTranslatesEverything translator) {
+            if (translatedTextLanguageCode != null && translatedTextMessage != null) {
+                return;
+            }
+
+            var translation = translator.translate(textMessage, languageCode);
+            translatedTextLanguageCode = translation.detectedSourceLanguage;
+            translatedTextMessage = translation.text;
+        }
     }
 }

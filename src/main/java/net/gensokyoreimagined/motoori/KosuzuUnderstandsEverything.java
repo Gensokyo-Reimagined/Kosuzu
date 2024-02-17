@@ -21,6 +21,7 @@ import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -40,10 +41,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -80,37 +78,6 @@ public class KosuzuUnderstandsEverything implements Listener {
         prepareRegexes(kosuzu.getConfig());
     }
 
-    // To be deprecated, replaced by ProtocolLib
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerMessage(@NotNull AsyncChatEvent event) {
-        // problem with eager translation: can't adjust the message
-
-        event.message(
-            event
-                .message()
-                .hoverEvent(
-                    Component
-                        .text("Click to translate")
-                        .color(NamedTextColor.GRAY)
-                )
-                .clickEvent(
-                    ClickEvent.callback(
-                        (player) -> translateCallback(event, player),
-                            ClickCallback.Options.builder().uses(69420).build()
-                    )
-                )
-        );
-    }
-
-    // Called by ProtocolLib
-    private void onPacketSending(PacketEvent event, boolean isSystem) {
-        var player = event.getPlayer();
-        var packet = event.getPacket();
-        var message = packet.getChatComponents().read(0);
-        var component = JSONComponentSerializer.json().deserialize(message.getJson()); // Adventure API from raw JSON
-        // logger.info("A CHAT EVENT TO " + player.getName() + ": " + getTextMessage(component, isSystem, player));
-    }
-
     private void prepareRegexes(@NotNull FileConfiguration config) {
         var regexes = config.getStringList("match.include");
 
@@ -125,6 +92,35 @@ public class KosuzuUnderstandsEverything implements Listener {
         logger.info("Prepared " + this.regexes.size() + " regexes");
     }
 
+    // Called by ProtocolLib
+    private void onPacketSending(PacketEvent event, boolean isSystem) {
+        var player = event.getPlayer();
+        var packet = event.getPacket();
+        var message = packet.getChatComponents().read(0);
+        var json = message.getJson();
+        var component = JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
+        var text = getTextMessage(component, isSystem, player);
+
+        if (text != null) {
+            var uuid = database.addMessage(json, text, player.getUniqueId());
+
+            if (uuid != null) {
+                var newComponent = component.hoverEvent(
+                        Component
+                            .text("Click to translate")
+                            .color(NamedTextColor.GRAY)
+                    )
+                    .clickEvent(
+                        ClickEvent.runCommand("/kosuzu translate " + uuid)
+                    );
+
+                var newJson = JSONComponentSerializer.json().serialize(newComponent);
+
+                packet.getChatComponents().write(0, WrappedChatComponent.fromJson(newJson));
+            }
+        }
+    }
+
     /**
      * Extracts the text message from a chat component
      * Also determines if we should translate the message
@@ -135,8 +131,6 @@ public class KosuzuUnderstandsEverything implements Listener {
      */
     private @Nullable String getTextMessage(Component component, boolean isSystem, Player player) {
         var text =  PlainTextComponentSerializer.plainText().serialize(component);
-
-        logger.info("TEXT: " + text);
 
         if (!isSystem) {
             return text;
@@ -171,27 +165,35 @@ public class KosuzuUnderstandsEverything implements Listener {
         var name = player.getName();
 
 
-        // TODO translate this message
         if (database.isNewUser(uuid, name)) {
-            String welcome;
-
             var country = geolocation.getCountryCode(player);
+            if (Objects.equals(country, "CN")) country = "ZH"; // Special case for China
+            if (Objects.equals(country, "TW")) country = "ZH"; // Special case for Taiwan
+            if (Objects.equals(country, "HK")) country = "ZH"; // Special case for Hong Kong
+            if (Objects.equals(country, "JP")) country = "JA"; // Special case for Japan
+            if (Objects.equals(country, "GB")) country = "EN-GB"; // Special case for England
+            if (Objects.equals(country, "US")) country = "EN-US"; // Special case for United States
 
-            if (country == null) {
-                welcome = database.getTranslation("welcome.new", null);
-            } else {
+            if (country != null) {
+                // Extra searching for languages
                 var languages = database.getLanguages();
-                var language = languages.stream().map(KosuzuDatabaseModels.Language::getCode).filter(code -> code.toUpperCase().contains(country.toUpperCase())).findFirst().orElse(null);
-                welcome = database.getTranslation("welcome.new", language);
+                String finalCountry = country;
+                country = languages.stream().map(KosuzuDatabaseModels.Language::getCode).filter(code -> code.toUpperCase().contains(finalCountry.toUpperCase())).findFirst().orElse(null);
+            }
+
+            try {
+                database.setUserDefaultLanguage(uuid, country);
+            } catch (Exception e) {
+                logger.warning("Failed to set default language for " + name + " (" + uuid + ") to " + country + ": " + e.getMessage());
             }
 
             player.sendMessage(
                 Kosuzu.HEADER
-                    .append(Component.text("Welcome to the server, " + name + "!", NamedTextColor.GRAY))
+                    .append(Component.text(database.getTranslation("welcome.first", country).replace("%username%", name), NamedTextColor.GRAY))
                     .append(Component.newline())
-                    .append(Component.text("Your default language is " + database.getUserDefaultLanguage(uuid) + ".", NamedTextColor.GRAY))
+                    .append(Component.text(database.getTranslation("welcome.second", country), NamedTextColor.GRAY))
                     .append(Component.newline())
-                    .append(Component.text("Use /kosuzu default to change your settings.", NamedTextColor.GRAY))
+                    .append(Component.text(database.getTranslation("welcome.third", country), NamedTextColor.GRAY))
             );
         }
     }

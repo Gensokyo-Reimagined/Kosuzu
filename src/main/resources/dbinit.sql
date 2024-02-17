@@ -49,12 +49,11 @@ CREATE UNIQUE INDEX `message_translation_index` ON `message_translation` (`messa
 CREATE TABLE IF NOT EXISTS `user_message`
 (
     `uuid`       VARCHAR(36) NOT NULL, -- Surrogate key
-    `user_id`    VARCHAR(36) NOT NULL, -- To which user this message belongs
     `message_id` VARCHAR(36) NOT NULL, -- To which message this translation belongs
     `json_msg`   JSON        NOT NULL, -- The JSON message from Minecraft
     PRIMARY KEY (`uuid`),
-    FOREIGN KEY (`user_id`) REFERENCES `user` (`uuid`) ON DELETE CASCADE,
     FOREIGN KEY (`message_id`) REFERENCES `message` (`message_id`) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX `user_message_index` ON `user_message` (`user_id`, `message_id`);
+CREATE INDEX `user_message_index` ON `user_message` (`message_id`);
+CREATE UNIQUE INDEX `user_message_json_index` ON `user_message` (`json_msg`);

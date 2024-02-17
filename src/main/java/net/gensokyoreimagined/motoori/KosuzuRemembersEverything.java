@@ -333,7 +333,7 @@ public class KosuzuRemembersEverything implements Closeable {
 
     public @Nullable String getMessage(@NotNull UUID message) {
         try (var connection = getConnection()) {
-            try (var statement = connection.prepareStatement("SELECT `text` FROM `message` WHERE `message_id` = ?")) {
+            try (var statement = connection.prepareStatement("SELECT `text` FROM `user_message` WHERE `message_id` = ?")) {
                 statement.setString(1, message.toString());
                 var result = statement.executeQuery();
                 if (result.next()) {
@@ -352,6 +352,14 @@ public class KosuzuRemembersEverything implements Closeable {
         try (var connection = getConnection()) {
             // First cache the message, if necessary
             // Then add the JSON to the database separately (player-specific)
+
+            try (var statement = connection.prepareStatement("SELECT uuid FROM `user_message` WHERE `json` = ?")) {
+                statement.setString(1, json);
+                var data = statement.executeQuery();
+                if (data.next()) {
+                    return UUID.fromString(data.getString("uuid"));
+                }
+            }
 
             UUID messageUUID = null;
 
