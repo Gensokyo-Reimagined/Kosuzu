@@ -140,12 +140,34 @@ public class KosuzuUnderstandsEverything implements Listener {
 
         if (database.isNewUser(uuid, name)) {
             var country = geolocation.getCountryCode(player);
+
+            // Special cases for countries (yandere dev would be proud)
+
             if (Objects.equals(country, "CN")) country = "ZH"; // Special case for China
-            if (Objects.equals(country, "TW")) country = "ZH"; // Special case for Taiwan
-            if (Objects.equals(country, "HK")) country = "ZH"; // Special case for Hong Kong
-            if (Objects.equals(country, "JP")) country = "JA"; // Special case for Japan
-            if (Objects.equals(country, "GB")) country = "EN-GB"; // Special case for England
-            if (Objects.equals(country, "US")) country = "EN-US"; // Special case for United States
+            else if (Objects.equals(country, "TW")) country = "ZH"; // Special case for Taiwan
+            else if (Objects.equals(country, "HK")) country = "ZH"; // Special case for Hong Kong
+            else if (Objects.equals(country, "JP")) country = "JA"; // Special case for Japan
+            else if (Objects.equals(country, "GB")) country = "EN-GB"; // Special case for England
+            else if (Objects.equals(country, "US")) country = "EN-US"; // Special case for United States
+            else if (Objects.equals(country, "CA")) country = "EN-US"; // Special case for Canada
+            else if (Objects.equals(country, "AU")) country = "EN-GB"; // Special case for Australia
+
+            else if (Objects.equals(country, "ES")) country = "ES"; // Special case for Spain
+            else if (Objects.equals(country, "MX")) country = "ES"; // Special case for Mexico
+            else if (Objects.equals(country, "AR")) country = "ES"; // Special case for Argentina
+            else if (Objects.equals(country, "CL")) country = "ES"; // Special case for Chile
+            else if (Objects.equals(country, "CO")) country = "ES"; // Special case for Colombia
+            else if (Objects.equals(country, "PE")) country = "ES"; // Special case for Peru
+            else if (Objects.equals(country, "VE")) country = "ES"; // Special case for Venezuela
+            else if (Objects.equals(country, "EC")) country = "ES"; // Special case for Ecuador
+            else if (Objects.equals(country, "GT")) country = "ES"; // Special case for Guatemala
+            else if (Objects.equals(country, "CU")) country = "ES"; // Special case for Cuba
+            else if (Objects.equals(country, "BO")) country = "ES"; // Special case for Bolivia
+            else if (Objects.equals(country, "DO")) country = "ES"; // Special case for Dominican Republic
+            else if (Objects.equals(country, "HN")) country = "ES"; // Special case for Honduras
+
+            else if (Objects.equals(country, "BR")) country = "PT-BR"; // Special case for Brazil
+            else if (Objects.equals(country, "PT")) country = "PT-PT"; // Special case for Portugal
 
             if (country != null) {
                 // Extra searching for languages
