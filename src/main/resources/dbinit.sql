@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS `multilingual`
 
 CREATE TABLE IF NOT EXISTS `message`
 (
-    `message_id` VARCHAR(36)  NOT NULL,
+    `uuid`       VARCHAR(36)  NOT NULL,
     `text`       VARCHAR(256) NOT NULL, -- We don't explicitly know the language of the message, so we store it here
     `language`   VARCHAR(8), -- ISO 639-1 code of the message, NULL if the language is unknown
-    PRIMARY KEY (`message_id`),
+    PRIMARY KEY (`uuid`),
     UNIQUE (`text`)
 );
 
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `message_translation`
     `language`   VARCHAR(8)   NOT NULL, -- ISO 639-1 code of translation
     `text`       VARCHAR(256) NOT NULL, -- The translated text
     PRIMARY KEY (`uuid`),
-    FOREIGN KEY (`message_id`) REFERENCES `message` (`message_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`message_id`) REFERENCES `message` (`uuid`) ON DELETE CASCADE,
     FOREIGN KEY (`language`) REFERENCES `language` (`code`) ON DELETE CASCADE
 );
 
@@ -52,8 +52,7 @@ CREATE TABLE IF NOT EXISTS `user_message`
     `message_id` VARCHAR(36) NOT NULL, -- To which message this translation belongs
     `json_msg`   JSON        NOT NULL, -- The JSON message from Minecraft
     PRIMARY KEY (`uuid`),
-    FOREIGN KEY (`message_id`) REFERENCES `message` (`message_id`) ON DELETE CASCADE
+    FOREIGN KEY (`message_id`) REFERENCES `message` (`uuid`) ON DELETE CASCADE
 );
 
-CREATE INDEX `user_message_index` ON `user_message` (`message_id`);
 CREATE UNIQUE INDEX `user_message_json_index` ON `user_message` (`json_msg`);

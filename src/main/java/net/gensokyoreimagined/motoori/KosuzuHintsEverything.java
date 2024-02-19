@@ -52,8 +52,8 @@ public class KosuzuHintsEverything implements TabCompleter {
             return
                 LANGUAGES
                     .stream()
-                    .filter(l -> l.getCode().toLowerCase().contains(query) || l.getNativeName().toLowerCase().contains(query) || l.getEnglishName().toLowerCase().contains(query))
-                    .map(KosuzuDatabaseModels.Language::getNativeName)
+                    .filter(l -> l.code().toLowerCase().contains(query) || l.nativeName().toLowerCase().contains(query) || l.englishName().toLowerCase().contains(query))
+                    .map(KosuzuDatabaseModels.Language::nativeName)
                     .toList();
         }
 

@@ -15,6 +15,9 @@
 
 package net.gensokyoreimagined.motoori;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -31,6 +34,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import static net.gensokyoreimagined.motoori.KosuzuDatabaseModels.*;
 
@@ -133,17 +137,19 @@ public class KosuzuRemembersEverything implements Closeable {
             // Initialize the schema before setting up pool
             var connection = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/", username, password);
 
-            var statement = connection.prepareStatement("SHOW DATABASES LIKE ?");
-            statement.setString(1, database);
-            var result = statement.executeQuery();
-            if (!result.next()) {
-                requiresInitialization = true;
+            try (var statement = connection.prepareStatement("SHOW DATABASES LIKE ?")) {
+                statement.setString(1, database);
+                try (var result = statement.executeQuery()) {
+                    if (!result.next()) {
+                        requiresInitialization = true;
+                    }
+                }
             }
-            statement.close();
 
-            statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS `" + database + "`");
-            statement.execute();
-            statement.close();
+            // Can't really use prepared statements here
+            try (var statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS `" + database + "`")) {
+                statement.execute();
+            }
             connection.close();
 
             dataSource.setUrl("jdbc:mysql://" + host + ":" + port + "/" + database);
@@ -176,11 +182,13 @@ public class KosuzuRemembersEverything implements Closeable {
 
         var split = sql.split(";");
 
+        String lastQuery = "";
+
         try (var connection = getConnection()) {
             try (var statement = connection.createStatement()) {
                 for (var query : split) {
                     if (query.isBlank()) continue;
-
+                    lastQuery = query;
                     statement.execute(query);
                 }
             }
@@ -197,7 +205,7 @@ public class KosuzuRemembersEverything implements Closeable {
                 }
             }
         } catch (SQLException e) {
-            logger.severe("Failed to initialize database!");
+            logger.severe("Failed to initialize database! Violating query: " + lastQuery);
             throw new KosuzuException(e);
         }
     }
@@ -212,14 +220,22 @@ public class KosuzuRemembersEverything implements Closeable {
                 .replace("INSERT IGNORE", "INSERT OR IGNORE");
     }
 
+    private final HashMap<UUID, String> userLanguages = new HashMap<>();
+
     @NotNull
     public String getUserDefaultLanguage(UUID uuid) {
+        return userLanguages.computeIfAbsent(uuid, this::getUserDefaultLanguageSQL);
+    }
+
+    @NotNull
+    private String getUserDefaultLanguageSQL(UUID uuid) {
         try (var connection = getConnection()) {
             try (var statement = connection.prepareStatement("SELECT `default_language` FROM `user` WHERE `uuid` = ?")) {
                 statement.setString(1, uuid.toString());
-                var result = statement.executeQuery();
-                if (result.next()) {
-                    return result.getString("default_language");
+                try (var result = statement.executeQuery()) {
+                    if (result.next()) {
+                        return result.getString("default_language");
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -261,15 +277,16 @@ public class KosuzuRemembersEverything implements Closeable {
         try (var connection = getConnection()) {
             try (var statement = connection.prepareStatement("SELECT `language` FROM `multilingual` WHERE `uuid` = ?")) {
                 statement.setString(1, uuid);
-                var result = statement.executeQuery();
-                // collect results into a collection
-                var output = new ArrayList<String>();
+                try (var result = statement.executeQuery()) {
+                    // collect results into a collection
+                    var output = new ArrayList<String>();
 
-                while (result.next()) {
-                    output.add(result.getString("language"));
+                    while (result.next()) {
+                        output.add(result.getString("language"));
+                    }
+
+                    return output;
                 }
-
-                return output;
             }
         } catch (SQLException e) {
             logger.severe("Failed to get user languages!");
@@ -279,19 +296,13 @@ public class KosuzuRemembersEverything implements Closeable {
         return List.of(config.getString("default-language", "EN-US"));
     }
 
-    public void setUserDefaultLanguage(UUID uuid, String lang) {
+    public void setUserDefaultLanguage(@NotNull UUID uuid, @NotNull String lang) {
         try (var connection = getConnection()) {
-            // i want to do ON DUPLICATE KEY UPDATE, but ugh compatibility
-            try (var statement = connection.prepareStatement(s("INSERT IGNORE INTO `user` (`uuid`, `default_language`) VALUES (?, ?);"))) {
-                statement.setString(1, uuid.toString());
-                statement.setString(2, lang);
-                statement.execute();
-            }
-
             try (var statement = connection.prepareStatement(s("UPDATE `user` SET `default_language` = ? WHERE `uuid` = ?;"))) {
                 statement.setString(1, lang);
                 statement.setString(2, uuid.toString());
                 statement.execute();
+                userLanguages.put(uuid, lang);
             }
         } catch (SQLException e) {
             logger.severe("Failed to set user default language!");
@@ -312,16 +323,17 @@ public class KosuzuRemembersEverything implements Closeable {
 
         try (var connection = getConnection()) {
             try (var statement = connection.prepareStatement("SELECT `code`, `native_name`, `english_name` FROM `language` ORDER BY `native_name`;")) {
-                var result = statement.executeQuery();
-                var output = new ArrayList<Language>();
+                try (var result = statement.executeQuery()) {
+                    var output = new ArrayList<Language>();
 
-                while (result.next()) {
-                    var language = new Language(result.getString("code"), result.getString("native_name"), result.getString("english_name"));
-                    output.add(language);
+                    while (result.next()) {
+                        var language = new Language(result.getString("code"), result.getString("native_name"), result.getString("english_name"));
+                        output.add(language);
+                    }
+
+                    languages = List.copyOf(output);
+                    return languages;
                 }
-
-                languages = List.copyOf(output);
-                return languages;
             }
         } catch (SQLException e) {
             logger.severe("Failed to get user languages!");
@@ -331,13 +343,15 @@ public class KosuzuRemembersEverything implements Closeable {
         throw new KosuzuException("Failed to get languages!");
     }
 
-    public @Nullable String getMessage(@NotNull UUID message) {
+    public Translation getTranslation(@NotNull UUID message, @NotNull UUID user) {
         try (var connection = getConnection()) {
-            try (var statement = connection.prepareStatement("SELECT `text` FROM `user_message` WHERE `message_id` = ?")) {
-                statement.setString(1, message.toString());
-                var result = statement.executeQuery();
-                if (result.next()) {
-                    return result.getString("text");
+            try (var statement = connection.prepareStatement("SELECT user_message.json_msg, message.uuid AS message_id, message.language, message.text, message_translation.text AS translation, `user`.`default_language` FROM `user_message` LEFT JOIN `message` ON message.uuid = user_message.message_id LEFT JOIN `user` ON `user`.`uuid` = ? LEFT JOIN `message_translation` ON message_translation.message_id = message.uuid AND user.default_language = message_translation.language WHERE `user_message`.`uuid` = ?;")) {
+                statement.setString(1, user.toString());
+                statement.setString(2, message.toString());
+                try (var result = statement.executeQuery()) {
+                    if (result.next()) {
+                        return new Translation(result.getString("json_msg"), UUID.fromString(result.getString("message_id")), result.getString("language"), result.getString("text"), result.getString("translation"), result.getString("default_language"));
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -348,55 +362,98 @@ public class KosuzuRemembersEverything implements Closeable {
         return null;
     }
 
-    public @Nullable UUID addMessage(@NotNull String json, @NotNull String message, @NotNull UUID player) {
+    public void addTranslation(@NotNull UUID message, @NotNull String translation, @NotNull String language, @NotNull String originalLanguage) {
         try (var connection = getConnection()) {
-            // First cache the message, if necessary
-            // Then add the JSON to the database separately (player-specific)
+            try (var statement = connection.prepareStatement("INSERT INTO `message_translation` (`uuid`, `message_id`,`language`, `text`) VALUES (?, ?, ?, ?);")) {
+                statement.setString(1, UUID.randomUUID().toString());
+                statement.setString(2, message.toString());
+                statement.setString(3, language);
+                statement.setString(4, translation);
 
-            try (var statement = connection.prepareStatement("SELECT uuid FROM `user_message` WHERE `json` = ?")) {
-                statement.setString(1, json);
-                var data = statement.executeQuery();
-                if (data.next()) {
-                    return UUID.fromString(data.getString("uuid"));
-                }
+                statement.execute();
             }
 
+            try (var statement = connection.prepareStatement("UPDATE `message` SET `language` = ? WHERE `uuid` = ?;")) {
+                statement.setString(1, originalLanguage);
+                statement.setString(2, message.toString());
+
+                statement.execute();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to add translation!");
+            logger.severe(e.getMessage());
+        }
+    }
+
+    /**
+     * Explanation: So, we need to capture outgoing messages, because this includes Discord messages and other messages
+     * that are not chat messages - this is a lot of messages, and we don't want to send a lot of requests to the database.
+     * This will unfortunately mean this gets called once per message, per player (!) - we don't want to do that.
+     */
+    private final LoadingCache<Message, UUID> messageCache = CacheBuilder.newBuilder()
+            .maximumSize(512)
+            .expireAfterWrite(1, TimeUnit.MINUTES)
+            .build(
+                    new CacheLoader<>() {
+                        public @NotNull UUID load(@NotNull Message json) {
+                            return addMessageSQL(json.getJSON(), json.getMessage());
+                        }
+                    });
+
+    public UUID addMessage(@NotNull String json, @NotNull String message) {
+        return messageCache.getUnchecked(new Message(message, json));
+    }
+
+    private @NotNull UUID addMessageSQL(@NotNull String json, @NotNull String message) {
+        UUID uuid = null;
+
+        try (var connection = getConnection()) {
+            // TODO this should be moved into a stored procedure (dropping support for SQLite)
             UUID messageUUID = null;
 
-            try (var statement = connection.prepareStatement("SELECT message_id FROM `message` WHERE `text` = ?")) {
+            try (var statement = connection.prepareStatement("SELECT uuid FROM `message` WHERE `text` = ?")) {
                 statement.setString(1, message);
-                var data = statement.executeQuery();
-                if (data.next()) {
-                    messageUUID = UUID.fromString(data.getString("message_id"));
+                try (var data = statement.executeQuery()) {
+                    if (data.next()) {
+                        messageUUID = UUID.fromString(data.getString("uuid"));
+                    }
                 }
             }
 
             if (messageUUID == null) {
                 messageUUID = UUID.randomUUID();
-                try (var statement = connection.prepareStatement("INSERT INTO `message` (`message_id`, `text`) VALUES (?, ?)")) {
+                try (var statement = connection.prepareStatement("INSERT INTO `message` (`uuid`, `text`) VALUES (?, ?)")) {
                     statement.setString(1, messageUUID.toString());
                     statement.setString(2, message);
                     statement.execute();
                 }
             }
 
-            var uuid = UUID.randomUUID();
-
-            try (var statement = connection.prepareStatement("INSERT INTO `user_message` (`uuid`, `user_id`, `message_id`, `json_msg`) VALUES (?, ?, ?, ?)")) {
-                statement.setString(1, uuid.toString());
-                statement.setString(2, player.toString());
-                statement.setString(3, messageUUID.toString());
-                statement.setString(4, json);
-                statement.execute();
+            try (var statement = connection.prepareStatement("SELECT `uuid` FROM `user_message` WHERE `json_msg` = ?")) {
+                statement.setString(1, json);
+                try (var data = statement.executeQuery()) {
+                    if (data.next()) {
+                        uuid = UUID.fromString(data.getString("uuid"));
+                    }
+                }
             }
 
-            return uuid;
+            if (uuid == null) {
+                uuid = UUID.randomUUID();
+
+                try (var statement = connection.prepareStatement("INSERT INTO `user_message` (`uuid`, `message_id`, `json_msg`) VALUES (?, ?, ?)")) {
+                    statement.setString(1, uuid.toString());
+                    statement.setString(2, messageUUID.toString());
+                    statement.setString(3, json);
+                    statement.execute();
+                }
+            }
         } catch (SQLException e) {
             logger.severe("Failed to add message!");
             logger.severe(e.getMessage());
         }
 
-        return null;
+        return uuid == null ? UUID.randomUUID() : uuid;
     }
 
     @Override

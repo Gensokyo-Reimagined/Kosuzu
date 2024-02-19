@@ -129,7 +129,7 @@ language:
       UK: "Неправильний вибір мови"
       ZH: "语言选择无效"
 translate:
-  click:
+  hover:
     BG: "Кликнете, за да преведете"
     CS: "Klikněte pro překlad"
     DA: "Klik for at oversætte"

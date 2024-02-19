@@ -17,52 +17,74 @@ package net.gensokyoreimagined.motoori;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+import java.util.UUID;
+
 public class KosuzuDatabaseModels {
-    public static class Language {
-        private final String code;
-        private final String nativeName;
-        private final String englishName;
+    public record Language(String code, String nativeName, String englishName) {}
 
-        public Language(String code, String nativeName, String englishName) {
-            this.code = code;
-            this.nativeName = nativeName;
-            this.englishName = englishName;
-        }
-
-        public String getCode() { return code; }
-        public String getNativeName() { return nativeName; }
-        public String getEnglishName() { return englishName; }
-    }
-
-    public static class Message {
+    public static class Translation {
         private final String messageJson;
-        private final String textMessage;
-        private @Nullable String translatedTextLanguageCode;
+        private final UUID originalTextMessageId;
+        private @Nullable String originalTextLanguageCode;
+        private final String originalTextMessage;
+        private final String requestedLanguageCode;
         private @Nullable String translatedTextMessage;
-        private final String languageCode;
 
-        public Message(String messageJson, String textMessage, @Nullable String translatedTextLanguageCode, @Nullable String translatedTextMessage, String languageCode) {
+        public Translation(String messageJson, UUID originalTextMessageId, @Nullable String originalTextLanguageCode, String originalTextMessage, @Nullable String translatedTextMessage, String requestedLanguageCode) {
             this.messageJson = messageJson;
-            this.textMessage = textMessage;
-            this.translatedTextLanguageCode = translatedTextLanguageCode;
+            this.originalTextMessageId = originalTextMessageId;
+            this.originalTextLanguageCode = originalTextLanguageCode;
+            this.originalTextMessage = originalTextMessage;
             this.translatedTextMessage = translatedTextMessage;
-            this.languageCode = languageCode;
+            this.requestedLanguageCode = requestedLanguageCode;
         }
 
         public String getMessageJson() { return messageJson; }
-
-        public String getTextMessage() { return textMessage; }
+        public @Nullable String getOriginalTextLanguageCode() { return originalTextLanguageCode; }
+        public String getOriginalTextMessage() { return originalTextMessage; }
+        public String getTranslatedTextLanguageCode() { return requestedLanguageCode; }
 
         public @Nullable String getTranslatedTextMessage() { return translatedTextMessage; }
 
-        public void loadTranslatedTextMessage(KosuzuTranslatesEverything translator) {
-            if (translatedTextLanguageCode != null && translatedTextMessage != null) {
+        public void loadTranslatedTextMessage(KosuzuTranslatesEverything translator, KosuzuRemembersEverything database) {
+            if (originalTextLanguageCode != null && translatedTextMessage != null) {
                 return;
             }
 
-            var translation = translator.translate(textMessage, languageCode);
-            translatedTextLanguageCode = translation.detectedSourceLanguage;
+            var translation = translator.translate(originalTextMessage, requestedLanguageCode);
+            originalTextLanguageCode = translation.detectedSourceLanguage;
             translatedTextMessage = translation.text;
+            database.addTranslation(originalTextMessageId, translation.text, requestedLanguageCode, translation.detectedSourceLanguage);
+        }
+    }
+
+    // Only used by the database class for caching
+    public static class Message {
+        private final String message;
+        private final String json;
+
+        public Message(String message, String json) {
+            this.message = message;
+            this.json = json;
+        }
+
+        public String getMessage() { return message; }
+        public String getJSON() { return json; }
+
+        // We don't need to compare the message, just the JSON
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Message message1 = (Message) o;
+            return Objects.equals(json, message1.json);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(json);
         }
     }
 }

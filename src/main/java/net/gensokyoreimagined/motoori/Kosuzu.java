@@ -28,9 +28,6 @@ public final class Kosuzu extends JavaPlugin {
     public final FileConfiguration config = getConfig();
     public KosuzuRemembersEverything database;
 
-    private boolean papiGeoip = false;
-    public boolean canUsePAPIGeoIP() { return papiGeoip; }
-
     public static Component HEADER = Component
             .text("[", NamedTextColor.GOLD)
             .append(Component.text("Kosuzu", NamedTextColor.YELLOW, TextDecoration.BOLD))

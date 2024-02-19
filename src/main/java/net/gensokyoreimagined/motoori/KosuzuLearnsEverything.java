@@ -17,18 +17,24 @@ package net.gensokyoreimagined.motoori;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.UUID;
+
 public class KosuzuLearnsEverything implements CommandExecutor {
 
     private final KosuzuRemembersEverything database;
+    private final KosuzuTranslatesEverything translator;
 
     public KosuzuLearnsEverything(Kosuzu kosuzu) {
         database = kosuzu.database;
+        translator = new KosuzuTranslatesEverything(kosuzu);
     }
 
     @Override
@@ -40,6 +46,11 @@ public class KosuzuLearnsEverything implements CommandExecutor {
 
         if (args[0].equalsIgnoreCase("default")) {
             changeUserLanguage(sender, args);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("translate")) {
+            translateMessage(sender, args);
             return true;
         }
 
@@ -77,11 +88,11 @@ public class KosuzuLearnsEverything implements CommandExecutor {
         var languages = database.getLanguages();
         var matchingLanguage = languages
                 .stream()
-                .filter(l -> l.getCode().toLowerCase().contains(language) || l.getNativeName().toLowerCase().contains(language) || l.getEnglishName().toLowerCase().contains(language))
+                .filter(l -> l.code().toLowerCase().contains(language) || l.nativeName().toLowerCase().contains(language) || l.englishName().toLowerCase().contains(language))
                 .findFirst();
 
         if (matchingLanguage.isPresent()) {
-            var code = matchingLanguage.get().getCode();
+            var code = matchingLanguage.get().code();
 
             database.setUserDefaultLanguage(player.getUniqueId(), code);
 
@@ -95,5 +106,66 @@ public class KosuzuLearnsEverything implements CommandExecutor {
                 Kosuzu.HEADER.append(Component.text(database.getTranslation("language.change.fail", oldLang), NamedTextColor.RED))
             );
         }
+    }
+
+    private void translateMessage(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (args.length < 2) {
+            return;
+        }
+
+        var uuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
+        if (sender instanceof Player bukkitPlayer)
+            uuid = bukkitPlayer.getUniqueId();
+
+        UUID messageUuid;
+        var userLanguage = database.getUserDefaultLanguage(uuid);
+
+        try {
+            messageUuid = UUID.fromString(args[1]);
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+
+        var translation = database.getTranslation(messageUuid, uuid);
+        translation.loadTranslatedTextMessage(translator, database);
+        var translatedLanguage = translation.getTranslatedTextLanguageCode();
+        var translated = translation.getTranslatedTextMessage();
+        var originalLanguage = translation.getOriginalTextLanguageCode();
+        var original = translation.getOriginalTextMessage();
+
+        if (translated == null || originalLanguage == null || translatedLanguage == null) {
+            sender.sendMessage(
+                    Kosuzu.HEADER.append(Component.text(database.getTranslation("translate.fail", userLanguage), NamedTextColor.RED))
+            );
+
+            return;
+        }
+
+        var json = translation.getMessageJson();
+        json = json.replace(original, translated);
+        var translatedComponent = JSONComponentSerializer.json().deserialize(json);
+
+        sender.sendMessage(
+                Component
+                        .text()
+                        .append(
+                                Component
+                                        .text()
+                                        .content("[" + originalLanguage + " -> " + translatedLanguage + "] ")
+                                        .color(NamedTextColor.GRAY)
+                        )
+
+                        .append(
+                                translatedComponent
+                        )
+                        .append(
+                                Component
+                                        .text()
+                                        .content(" (" + original + ")")
+                                        .decorate(TextDecoration.ITALIC)
+                                        .color(NamedTextColor.GRAY)
+                        )
+                        .build()
+        );
     }
 }
