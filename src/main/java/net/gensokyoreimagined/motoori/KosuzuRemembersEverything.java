@@ -148,7 +148,7 @@ public class KosuzuRemembersEverything implements Closeable {
             }
 
             // Can't really use prepared statements here
-            try (var statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS `" + database + "`")) {
+            try (var statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS `" + database + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;")) {
                 statement.execute();
             }
             connection.close();
