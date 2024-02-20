@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `message_translation`
     `uuid`       VARCHAR(36)  NOT NULL, -- Surrogate key
     `message_id` VARCHAR(36)  NOT NULL, -- To which message this translation belongs
     `language`   VARCHAR(8)   NOT NULL, -- ISO 639-1 code of translation
-    `text`       VARCHAR(256) NOT NULL, -- The translated text
+    `text`       VARCHAR(512) NOT NULL, -- The translated text
     PRIMARY KEY (`uuid`),
     FOREIGN KEY (`message_id`) REFERENCES `message` (`uuid`) ON DELETE CASCADE,
     FOREIGN KEY (`language`) REFERENCES `language` (`code`) ON DELETE CASCADE
@@ -50,9 +50,9 @@ CREATE TABLE IF NOT EXISTS `user_message`
 (
     `uuid`       VARCHAR(36) NOT NULL, -- Surrogate key
     `message_id` VARCHAR(36) NOT NULL, -- To which message this translation belongs
-    `json_msg`   JSON        NOT NULL, -- The JSON message from Minecraft
+    `json_msg`   VARCHAR(2048) NOT NULL, -- The JSON message from Minecraft
     PRIMARY KEY (`uuid`),
     FOREIGN KEY (`message_id`) REFERENCES `message` (`uuid`) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX `user_message_json_index` ON `user_message` (`json_msg`);
+CREATE INDEX `user_message_json_msg_idx` ON `user_message` (json_msg(255));
