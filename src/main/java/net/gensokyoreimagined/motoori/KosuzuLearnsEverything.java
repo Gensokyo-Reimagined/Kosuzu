@@ -54,14 +54,25 @@ public class KosuzuLearnsEverything implements CommandExecutor {
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("auto")) {
+            setAuto(sender, args);
+            return true;
+        }
+
         invalidSubcommand(sender);
         return true;
     }
 
     private static void invalidSubcommand(@NotNull CommandSender sender) {
-        sender.sendMessage(
-            Kosuzu.HEADER.append(Component.text("/kosuzu default <lang>", NamedTextColor.RED))
-        );
+        if (sender.hasPermission("kosuzu.translate.auto")) {
+            sender.sendMessage(
+                Kosuzu.HEADER.append(Component.text("/kosuzu <default|auto>", NamedTextColor.RED))
+            );
+        } else {
+            sender.sendMessage(
+                Kosuzu.HEADER.append(Component.text("/kosuzu <default>", NamedTextColor.RED))
+            );
+        }
     }
 
     private void changeUserLanguage(@NotNull CommandSender sender, @NotNull String[] args) {
@@ -73,7 +84,9 @@ public class KosuzuLearnsEverything implements CommandExecutor {
         }
 
         if (args == null || args.length < 2) {
-            invalidSubcommand(sender);
+            sender.sendMessage(
+                Kosuzu.HEADER.append(Component.text("/kosuzu default <language>", NamedTextColor.RED))
+            );
             return;
         }
 
@@ -105,6 +118,60 @@ public class KosuzuLearnsEverything implements CommandExecutor {
             sender.sendMessage(
                 Kosuzu.HEADER.append(Component.text(database.getTranslation("language.change.fail", oldLang), NamedTextColor.RED))
             );
+        }
+    }
+
+    private void setAuto(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(
+                Kosuzu.HEADER.append(Component.text("bruh just copy-paste the text into DeepL", NamedTextColor.RED))
+            );
+            return;
+        }
+
+        var canForce = sender.hasPermission("kosuzu.translate.auto.force");
+
+        if (args.length < 2) {
+            if (canForce) {
+                sender.sendMessage(
+                    Kosuzu.HEADER.append(Component.text("/kosuzu auto <on|off|force>", NamedTextColor.RED))
+                );
+            } else {
+                sender.sendMessage(
+                    Kosuzu.HEADER.append(Component.text("/kosuzu auto <on|off>", NamedTextColor.RED))
+                );
+            }
+            return;
+        }
+
+        if (args[1].equalsIgnoreCase("on")) {
+            database.setUserAutoTranslate(player.getUniqueId(), KosuzuDatabaseModels.TranslationMode.ON);
+
+            sender.sendMessage(
+                Kosuzu.HEADER.append(Component.text(database.getTranslation("auto.on", database.getUserDefaultLanguage(player.getUniqueId())), NamedTextColor.GREEN))
+            );
+        } else if (args[1].equalsIgnoreCase("off")) {
+            database.setUserAutoTranslate(player.getUniqueId(), KosuzuDatabaseModels.TranslationMode.OFF);
+
+            sender.sendMessage(
+                Kosuzu.HEADER.append(Component.text(database.getTranslation("auto.off", database.getUserDefaultLanguage(player.getUniqueId())), NamedTextColor.GREEN))
+            );
+        } else if (args[1].equalsIgnoreCase("force") && canForce) {
+            database.setUserAutoTranslate(player.getUniqueId(), KosuzuDatabaseModels.TranslationMode.FORCE);
+
+            sender.sendMessage(
+                Kosuzu.HEADER.append(Component.text(database.getTranslation("auto.force", database.getUserDefaultLanguage(player.getUniqueId())), NamedTextColor.GREEN))
+            );
+        } else {
+            if (canForce) {
+                sender.sendMessage(
+                        Kosuzu.HEADER.append(Component.text("/kosuzu auto <on|off|force>", NamedTextColor.RED))
+                );
+            } else {
+                sender.sendMessage(
+                        Kosuzu.HEADER.append(Component.text("/kosuzu auto <on|off>", NamedTextColor.RED))
+                );
+            }
         }
     }
 

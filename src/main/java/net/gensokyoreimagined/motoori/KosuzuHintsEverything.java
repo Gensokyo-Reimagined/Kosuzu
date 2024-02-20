@@ -58,7 +58,11 @@ public class KosuzuHintsEverything implements TabCompleter {
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("auto") && sender.hasPermission("kosuzu.translate.auto")) {
-            return List.of("on", "off");
+            if (sender.hasPermission("kosuzu.translate.auto.force")) {
+                return List.of("on", "force", "off");
+            } else {
+                return List.of("on", "off");
+            }
         }
 
         return null;

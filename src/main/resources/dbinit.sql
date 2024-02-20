@@ -55,4 +55,5 @@ CREATE TABLE IF NOT EXISTS `user_message`
     FOREIGN KEY (`message_id`) REFERENCES `message` (`uuid`) ON DELETE CASCADE
 );
 
+-- noinspection SqlResolve
 CREATE INDEX `user_message_json_msg_idx` ON `user_message` (json_msg(255));

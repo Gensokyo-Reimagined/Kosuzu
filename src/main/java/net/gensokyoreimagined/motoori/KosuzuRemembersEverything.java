@@ -26,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -168,14 +169,32 @@ public class KosuzuRemembersEverything implements Closeable {
         if (!requiresInitialization) return;
 
         var initialization = kosuzu.getResource("dbinit.sql");
-        if (initialization == null) {
+        loadSQLFile(initialization);
+
+        for (int i = config.getInt("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", 0); i < 1; i++) {
+            var update = kosuzu.getResource("migration" + i + ".sql");
+            if (update == null) {
+                continue;
+            }
+
+            logger.info("Applying migration " + i + " to database...");
+            loadSQLFile(update);
+            config.set("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", i + 1);
+            kosuzu.saveConfig();
+        }
+
+        loadLanguages();
+    }
+
+    private void loadSQLFile(InputStream fileStream) {
+        if (fileStream == null) {
             throw new KosuzuException("Failed to find dbinit.sql! Is the plugin jar corrupted?");
         }
 
         String sql;
 
         try {
-            sql = new String(initialization.readAllBytes());
+            sql = new String(fileStream.readAllBytes());
         } catch (IOException ex) {
             throw new KosuzuException("Failed to load dbinit.sql! Is the plugin jar corrupted?", ex);
         }
@@ -192,7 +211,14 @@ public class KosuzuRemembersEverything implements Closeable {
                     statement.execute(query);
                 }
             }
+        } catch (SQLException e) {
+            logger.severe("Failed to initialize database! Violating query: " + lastQuery);
+            throw new KosuzuException(e);
+        }
+    }
 
+    private void loadLanguages() {
+        try (var connection = getConnection()) {
             // Get all codes from the translations file
             var keys = Objects.requireNonNull(translations.getConfigurationSection("language.english")).getKeys(false);
 
@@ -205,7 +231,7 @@ public class KosuzuRemembersEverything implements Closeable {
                 }
             }
         } catch (SQLException e) {
-            logger.severe("Failed to initialize database! Violating query: " + lastQuery);
+            logger.severe("Failed to load languages into database! " + e.getMessage());
             throw new KosuzuException(e);
         }
     }
@@ -306,6 +332,20 @@ public class KosuzuRemembersEverything implements Closeable {
             }
         } catch (SQLException e) {
             logger.severe("Failed to set user default language!");
+            logger.severe(e.getMessage());
+        }
+    }
+
+    // Use TranslationMode mode instead of directly using integers
+    public void setUserAutoTranslate(@NotNull UUID uuid, TranslationMode mode) {
+        try (var connection = getConnection()) {
+            try (var statement = connection.prepareStatement("UPDATE `user` SET `use_auto` = ? WHERE `uuid` = ?;")) {
+                statement.setInt(1, mode.getValue());
+                statement.setString(2, uuid.toString());
+                statement.execute();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to set user auto translate!");
             logger.severe(e.getMessage());
         }
     }

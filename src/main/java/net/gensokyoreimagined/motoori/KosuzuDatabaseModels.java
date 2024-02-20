@@ -87,4 +87,17 @@ public class KosuzuDatabaseModels {
             return Objects.hash(json);
         }
     }
+
+    public static enum TranslationMode {
+        OFF(0), ON(1), FORCE(2);
+        private final int value;
+
+        private TranslationMode(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+    }
 }

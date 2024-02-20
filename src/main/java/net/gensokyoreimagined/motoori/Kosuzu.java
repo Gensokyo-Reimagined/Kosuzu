@@ -28,13 +28,14 @@ public final class Kosuzu extends JavaPlugin {
     public final FileConfiguration config = getConfig();
     public KosuzuRemembersEverything database;
 
-    public static Component HEADER = Component
+    public static final Component HEADER = Component
             .text("[", NamedTextColor.GOLD)
             .append(Component.text("Kosuzu", NamedTextColor.YELLOW, TextDecoration.BOLD))
             .append(Component.text("] ", NamedTextColor.GOLD));
 
     @Override
     public void onEnable() {
+        config.addDefault("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", 0);
         config.addDefault("use-deepl-mobile", true);
         config.addDefault("deepl-api-url", "https://api-free.deepl.com/v2/translate");
         config.addDefault("deepl-api-key", "changeme");
@@ -52,7 +53,7 @@ public final class Kosuzu extends JavaPlugin {
 
         var regexDefaults = List.of(
             "^<[^>]+> (.*)", // Vanilla
-            "^[^»]+» (.*)", // Discord
+            "^[^\\[][^»]+» (.*)", // Discord
             "^(?::build:|:dev_server:).+?: (.*)" // Chatty
         );
 
