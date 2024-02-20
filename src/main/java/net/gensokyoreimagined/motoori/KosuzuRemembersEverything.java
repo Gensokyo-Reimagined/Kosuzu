@@ -153,7 +153,7 @@ public class KosuzuRemembersEverything implements Closeable {
             }
             connection.close();
 
-            dataSource.setUrl("jdbc:mysql://" + host + ":" + port + "/" + database);
+            dataSource.setUrl("jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=utf-8");
             dataSource.setUsername(username);
             dataSource.setPassword(password);
             dataSource.setMinIdle(5);
