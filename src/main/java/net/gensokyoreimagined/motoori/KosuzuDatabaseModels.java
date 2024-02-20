@@ -88,6 +88,8 @@ public class KosuzuDatabaseModels {
         }
     }
 
+    public static record User(UUID uuid, String lastKnownName, String defaultLanguage, TranslationMode translationMode) {}
+
     public static enum TranslationMode {
         OFF(0), ON(1), FORCE(2);
         private final int value;
