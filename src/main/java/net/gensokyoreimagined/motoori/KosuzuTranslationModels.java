@@ -88,8 +88,8 @@ public class KosuzuTranslationModels {
         DeepLMobileLanguage lang;
         @SerializedName("timestamp")
         long timestamp;
-        @SerializedName("commonJobParams")
-        DeepLMobileCommonJobParams commonJobParams;
+        // @SerializedName("commonJobParams")
+        // DeepLMobileCommonJobParams commonJobParams;
 
         DeepLMobileParams(String input, String targetLanguage) {
             texts = List.of(new DeepLMobileText(input));
@@ -98,11 +98,17 @@ public class KosuzuTranslationModels {
 
             // chat i have no idea why they implemented it like this (not the stream but the count)
             // see PyDeepLX for more info
-            var numberOfIsInText = input.chars().filter(letter -> (char) letter == 'i').count() + 1;
+            var numberOfIsInText = input.chars().filter(letter -> (char) letter == 'i').count();
             var actualTimestamp = System.currentTimeMillis();
-            timestamp = numberOfIsInText == 1 ? actualTimestamp : actualTimestamp - actualTimestamp % numberOfIsInText + numberOfIsInText;
 
-            commonJobParams = new DeepLMobileCommonJobParams();
+            if (numberOfIsInText == 0) {
+                timestamp = actualTimestamp;
+            } else {
+                numberOfIsInText += 1;
+                timestamp = actualTimestamp - (actualTimestamp % numberOfIsInText) + numberOfIsInText;
+            }
+
+            // commonJobParams = new DeepLMobileCommonJobParams();
         }
     }
 
@@ -126,7 +132,7 @@ public class KosuzuTranslationModels {
 
         DeepLMobileLanguage(String targetLang) {
             this.targetLang = targetLang;
-            sourceLangUserSelected = "auto";
+            sourceLangUserSelected = "AUTO";
         }
     }
 

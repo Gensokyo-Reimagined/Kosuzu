@@ -77,9 +77,9 @@ public class KosuzuTranslatesEverything {
             .header("Accept-Language", "en-US,en;q=0.9")
             .header("Accept-Encoding", "gzip, deflate, br")
             .header("x-app-device", "iPhone13,2")
-            .header("User-Agent", "DeepL-iOS/2.11.2 iOS 16.3.0 (iPhone13,1)")
+            .header("User-Agent", "DeepL-iOS/2.9.1 iOS 16.3.0 (iPhone13,2)")
             .header("x-app-build", "510265")
-            .header("x-app-version", "2.11.2")
+            .header("x-app-version", "2.9.1")
             // .header("Connection", "keep-alive")
             .POST(HttpRequest.BodyPublishers.ofString(jsonRequest))
             .build();
