@@ -29,9 +29,12 @@ import java.util.logging.Logger;
 
 public class KosuzuKnowsWhereYouLive {
     private final Logger logger;
+    private final HttpClient client;
+
 
     public KosuzuKnowsWhereYouLive(Kosuzu kosuzu) {
         logger = kosuzu.getLogger();
+        client = HttpClient.newHttpClient();
     }
 
     public @Nullable String getCountryCode(Player player) {
@@ -63,8 +66,6 @@ public class KosuzuKnowsWhereYouLive {
             .uri(URI.create("http://ip-api.com/json/" + ip))
             .GET()
             .build();
-
-        var client = HttpClient.newHttpClient();
 
         try {
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());

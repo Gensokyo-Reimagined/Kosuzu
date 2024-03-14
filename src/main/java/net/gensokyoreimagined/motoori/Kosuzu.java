@@ -35,7 +35,7 @@ public final class Kosuzu extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        config.addDefault("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", 0);
+        config.addDefault("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", 0); // Database mi
         config.addDefault("use-deepl-mobile", true);
         config.addDefault("deepl-api-url", "https://api-free.deepl.com/v2/translate");
         config.addDefault("deepl-api-key", "changeme");
