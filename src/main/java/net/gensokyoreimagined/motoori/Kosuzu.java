@@ -59,6 +59,8 @@ public final class Kosuzu extends JavaPlugin {
 
         config.addDefault("match.include", regexDefaults);
 
+        config.addDefault("match.blacklist", List.<String>of());
+
         config.options().copyDefaults(true);
         saveConfig();
 
