@@ -114,7 +114,7 @@ public class KosuzuUnderstandsEverything implements Listener {
         var json = message.getJson();
         var component = JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
         var text = PlainTextComponentSerializer.plainText().serialize(component);
-        var actualMessage = parser.getTextMessage(component, player);
+        var actualMessage = parser.getTextMessage(text, player);
 
         TextComponent newComponent;
         if (actualMessage != null) {
