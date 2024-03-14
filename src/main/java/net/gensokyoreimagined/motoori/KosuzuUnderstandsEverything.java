@@ -28,6 +28,7 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
 import net.minecraft.server.MinecraftServer;
 import org.bukkit.event.EventHandler;
@@ -116,9 +117,9 @@ public class KosuzuUnderstandsEverything implements Listener {
         var text = PlainTextComponentSerializer.plainText().serialize(component);
         var actualMessage = parser.getTextMessage(text, player);
 
-        TextComponent newComponent;
+        Component newComponent;
         if (actualMessage != null) {
-            actualMessage = parser.removeUnwantedSyntax(message);
+            actualMessage = parser.removeUnwantedSyntax(actualMessage);
             var uuid = database.addMessage(json, actualMessage);
 
             newComponent = component.hoverEvent(
@@ -130,7 +131,7 @@ public class KosuzuUnderstandsEverything implements Listener {
                     ClickEvent.runCommand("/kosuzu translate " + uuid.toString())
                 );
         } else {
-            newComponent = component.content(parser.removeUnwantedSyntax(text));
+            newComponent = Component.text(parser.removeUnwantedSyntax(text));
         }
 
         var newJson = JSONComponentSerializer.json().serialize(newComponent);

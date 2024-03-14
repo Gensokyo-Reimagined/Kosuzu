@@ -16,12 +16,12 @@
 package net.gensokyoreimagined.motoori;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 public class KosuzuParsesEverything {
     private final ArrayList<Pattern> regexes = new ArrayList<>();
     private final Map<String, Map<UUID, Pattern>> placeholderRegexes = new HashMap<>();
-    private final ArrayList<String> syntaxBlacklist = new ArrayList<>();
+    private final List<String> syntaxBlacklist;
 
     public KosuzuParsesEverything(Kosuzu kosuzu) {
         var config = kosuzu.config;
