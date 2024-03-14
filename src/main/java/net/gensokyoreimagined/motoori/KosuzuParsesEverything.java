@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 public class KosuzuParsesEverything {
     private final ArrayList<Pattern> regexes = new ArrayList<>();
     private final Map<String, Map<UUID, Pattern>> placeholderRegexes = new HashMap<>();
+    private final ArrayList<String> syntaxBlacklist = new ArrayList<>();
 
     public KosuzuParsesEverything(Kosuzu kosuzu) {
         var config = kosuzu.config;
@@ -43,18 +44,20 @@ public class KosuzuParsesEverything {
         }
 
         kosuzu.getLogger().info("Prepared " + this.regexes.size() + " regexes");
+
+        syntaxBlacklist = config.getStringList("match.blacklist");
+
+        kosuzu.getLogger().info("Added " + syntaxBlacklist.size() + " blacklist entries");
     }
 
     /**
-     * Extracts the text message from a chat component
+     * Extracts the actual text message from a chat message
      * Also determines if we should translate the message
      * @param component The chat component created from the message
      * @param player The player who sent the message
      * @return The text message, or null if it could/should not be translated
      */
-    public @Nullable String getTextMessage(Component component, Player player) {
-        var text =  PlainTextComponentSerializer.plainText().serialize(component);
-
+    public @Nullable String getTextMessage(String text, Player player) {
         for (var pattern : regexes) {
             var matcher = pattern.matcher(text);
             if (matcher.matches()) {
@@ -75,5 +78,19 @@ public class KosuzuParsesEverything {
         }
 
         return null;
+    }
+
+    /**
+     * Removes unwanted chat syntax from messages, in case someone's trying to be a neerdowell.
+     * Examples of syntax include chat prefixes and role prefixes.
+     * @param message The message to check
+     * @return The same message with unwanted syntax removed.
+     */
+    public String removeUnwantedSyntax(String message) {
+        for (var syntaxBlacklistString : syntaxBlacklist) {
+            message = message.replaceAll(syntaxBlacklistString, "");
+        }
+
+        return message;
     }
 }

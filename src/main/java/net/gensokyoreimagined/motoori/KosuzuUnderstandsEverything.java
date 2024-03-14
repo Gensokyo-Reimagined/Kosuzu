@@ -24,6 +24,7 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
@@ -82,7 +83,7 @@ public class KosuzuUnderstandsEverything implements Listener {
 
         // Use the vanilla decorated content and then convert it to Adventure API
         var decoratedContent = boundChatType.orElseThrow().decorate(message);
-        var text = decoratedContent.getString();
+        var text = parser.removeUnwantedSyntax(decoratedContent.getString());
         var component = Component.text(text);
         // Only to get the JSON
         var json = JSONComponentSerializer.json().serialize(component);
@@ -112,12 +113,15 @@ public class KosuzuUnderstandsEverything implements Listener {
 
         var json = message.getJson();
         var component = JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
-        var text = parser.getTextMessage(component, player);
+        var text = PlainTextComponentSerializer.plainText().serialize(component);
+        var actualMessage = parser.getTextMessage(component, player);
 
-        if (text != null) {
-            var uuid = database.addMessage(json, text);
+        TextComponent newComponent;
+        if (actualMessage != null) {
+            actualMessage = parser.removeUnwantedSyntax(message);
+            var uuid = database.addMessage(json, actualMessage);
 
-            var newComponent = component.hoverEvent(
+            newComponent = component.hoverEvent(
                     Component
                         .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
                         .color(NamedTextColor.GRAY)
@@ -125,10 +129,12 @@ public class KosuzuUnderstandsEverything implements Listener {
                 .clickEvent(
                     ClickEvent.runCommand("/kosuzu translate " + uuid.toString())
                 );
-
-            var newJson = JSONComponentSerializer.json().serialize(newComponent);
-            packet.getChatComponents().write(0, WrappedChatComponent.fromJson(newJson));
+        } else {
+            newComponent = component.content(parser.removeUnwantedSyntax(text));
         }
+
+        var newJson = JSONComponentSerializer.json().serialize(newComponent);
+        packet.getChatComponents().write(0, WrappedChatComponent.fromJson(newJson));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
