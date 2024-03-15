@@ -76,7 +76,7 @@ public class KosuzuKnowsWhereYouLive {
             }
             return null;
         } catch (IOException | InterruptedException e) {
-            System.out.println("Failed to get country code for " + ip);
+            logger.warning("Failed to get country code for " + ip);
             return null;
         }
     }

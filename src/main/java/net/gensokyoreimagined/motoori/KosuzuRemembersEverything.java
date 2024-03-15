@@ -28,6 +28,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -46,7 +47,6 @@ public class KosuzuRemembersEverything implements Closeable {
     private final Logger logger;
 
     private boolean isSqlite = false;
-    private boolean requiresInitialization = false;
 
     public KosuzuRemembersEverything(Kosuzu kosuzu) {
         config = kosuzu.config;
@@ -57,16 +57,13 @@ public class KosuzuRemembersEverything implements Closeable {
             throw new KosuzuException("Failed to find translations.yml! Is the plugin jar corrupted?");
         }
 
-        try (var reader = new InputStreamReader(translationFile)) {
+        try (var reader = new InputStreamReader(translationFile, StandardCharsets.UTF_8)) {
             translations = YamlConfiguration.loadConfiguration(reader);
         } catch (IOException ex) {
             throw new KosuzuException("Failed to load translations.yml! Is the plugin jar corrupted?", ex);
         }
 
-        var type = config.getString("storage.type");
-        if (type == null) {
-            type = "sqlite";
-        }
+        var type = config.getString("storage.type", "sqlite");
 
         switch (type) {
             case "sqlite":
@@ -99,16 +96,9 @@ public class KosuzuRemembersEverything implements Closeable {
     private void initializeSqlite() {
         var path = config.getString("storage.sqlite.file", "kosuzu.db");
 
-        try {
-            var pathObj = Path.of(path);
-
-            if (!Files.exists(pathObj)) {
-                Files.createFile(pathObj);
-                requiresInitialization = true;
-            }
-        } catch (IOException e) {
-            logger.severe("Failed to create SQLite database file! Maybe check your permissions? Writing to: " + path);
-            throw new KosuzuException(e);
+        if (!Files.exists(Path.of("plugins/Kosuzu/" + path))) {
+            // Force re-migration if the database file was deleted
+            config.set("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", 0);
         }
 
         try {
@@ -117,7 +107,7 @@ public class KosuzuRemembersEverything implements Closeable {
             dataSource.setMaxIdle(10);
             dataSource.setMaxOpenPreparedStatements(50);
         } catch (Exception e) {
-            logger.severe("Failed to connect to SQLite database! Writing to: " + path);
+            logger.severe("Failed to setup SQLite database! Writing to: " + path);
             throw new KosuzuException(e);
         }
     }
@@ -138,17 +128,8 @@ public class KosuzuRemembersEverything implements Closeable {
             // Initialize the schema before setting up pool
             var connection = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/", username, password);
 
-            try (var statement = connection.prepareStatement("SHOW DATABASES LIKE ?")) {
-                statement.setString(1, database);
-                try (var result = statement.executeQuery()) {
-                    if (!result.next()) {
-                        requiresInitialization = true;
-                    }
-                }
-            }
-
             // Can't really use prepared statements here
-            try (var statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS `" + database + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;")) {
+            try (var statement = connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS `" + database + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;")) {
                 statement.execute();
             }
             connection.close();
@@ -166,29 +147,31 @@ public class KosuzuRemembersEverything implements Closeable {
     }
 
     private void initializeDatabase(Kosuzu kosuzu) {
-        if (!requiresInitialization) return;
+        var migrationIndex = config.getInt("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", 0);
+        var extension = "." + config.getString("storage.type", "sqlite") + ".sql";
 
-        var initialization = kosuzu.getResource("dbinit.sql");
-        loadSQLFile(initialization);
-
-        for (int i = config.getInt("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", 0); i < 1; i++) {
-            var update = kosuzu.getResource("migration" + i + ".sql");
+        // Iterate through all available migration files starting from last read in config
+        while (true) {
+            var update = kosuzu.getResource("migration" + migrationIndex + extension);
             if (update == null) {
-                continue;
+                break;
             }
 
-            logger.info("Applying migration " + i + " to database...");
+            logger.info("Applying migration " + migrationIndex + " to database...");
             loadSQLFile(update);
-            config.set("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", i + 1);
-            kosuzu.saveConfig();
+
+            ++migrationIndex;
         }
+
+        config.set("DO-NOT-EDIT-VERSION-UNLESS-YOU-KNOW-WHAT-YOU-ARE-DOING", migrationIndex);
+        kosuzu.saveConfig();
 
         loadLanguages();
     }
 
     private void loadSQLFile(InputStream fileStream) {
         if (fileStream == null) {
-            throw new KosuzuException("Failed to find dbinit.sql! Is the plugin jar corrupted?");
+            throw new KosuzuException("Failed to load SQL file stream! Is the plugin jar corrupted?");
         }
 
         String sql;
@@ -196,7 +179,7 @@ public class KosuzuRemembersEverything implements Closeable {
         try {
             sql = new String(fileStream.readAllBytes());
         } catch (IOException ex) {
-            throw new KosuzuException("Failed to load dbinit.sql! Is the plugin jar corrupted?", ex);
+            throw new KosuzuException("Failed to read SQL file stream! Is the plugin jar corrupted?", ex);
         }
 
         var split = sql.split(";");
