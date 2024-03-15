@@ -28,7 +28,6 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
 import net.minecraft.server.MinecraftServer;
 import org.bukkit.event.EventHandler;
@@ -113,16 +112,15 @@ public class KosuzuUnderstandsEverything implements Listener {
         var message = packet.getChatComponents().read(0);
 
         var json = message.getJson();
-        var component = JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
-        var text = PlainTextComponentSerializer.plainText().serialize(component);
-        var actualMessage = parser.getTextMessage(text, player);
+        var component = (TextComponent) JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
+        var text = parser.getTextMessage(component, player);
 
-        Component newComponent;
-        if (actualMessage != null) {
-            actualMessage = parser.removeUnwantedSyntax(actualMessage);
-            var uuid = database.addMessage(json, actualMessage);
+        if (text != null) {
+            text = parser.removeUnwantedSyntax(text);
+            var uuid = database.addMessage(json, text);
 
-            newComponent = component.hoverEvent(
+            var newComponent = component.content(text)
+                .hoverEvent(
                     Component
                         .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
                         .color(NamedTextColor.GRAY)
@@ -130,12 +128,10 @@ public class KosuzuUnderstandsEverything implements Listener {
                 .clickEvent(
                     ClickEvent.runCommand("/kosuzu translate " + uuid.toString())
                 );
-        } else {
-            newComponent = Component.text(parser.removeUnwantedSyntax(text));
-        }
 
-        var newJson = JSONComponentSerializer.json().serialize(newComponent);
-        packet.getChatComponents().write(0, WrappedChatComponent.fromJson(newJson));
+            var newJson = JSONComponentSerializer.json().serialize(newComponent);
+            packet.getChatComponents().write(0, WrappedChatComponent.fromJson(newJson));
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

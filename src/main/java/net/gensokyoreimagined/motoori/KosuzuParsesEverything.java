@@ -16,6 +16,7 @@
 package net.gensokyoreimagined.motoori;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,13 +52,15 @@ public class KosuzuParsesEverything {
     }
 
     /**
-     * Extracts the actual text message from a chat message
+     * Extracts the text message from a chat component
      * Also determines if we should translate the message
      * @param component The chat component created from the message
      * @param player The player who sent the message
      * @return The text message, or null if it could/should not be translated
      */
-    public @Nullable String getTextMessage(String text, Player player) {
+    public @Nullable String getTextMessage(Component component, Player player) {
+        var text =  PlainTextComponentSerializer.plainText().serialize(component);
+
         for (var pattern : regexes) {
             var matcher = pattern.matcher(text);
             if (matcher.matches()) {
