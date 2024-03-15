@@ -34,6 +34,7 @@ public class KosuzuParsesEverything {
 
     public KosuzuParsesEverything(Kosuzu kosuzu) {
         var config = kosuzu.config;
+        var logger = kosuzu.getLogger();
         var regexes = config.getStringList("match.include");
 
         for (var regex : regexes) {
@@ -44,11 +45,11 @@ public class KosuzuParsesEverything {
             }
         }
 
-        kosuzu.getLogger().info("Prepared " + this.regexes.size() + " regexes");
+        logger.info("Prepared " + this.regexes.size() + " regexes");
 
         syntaxBlacklist = config.getStringList("match.blacklist");
 
-        kosuzu.getLogger().info("Added " + syntaxBlacklist.size() + " blacklist entries");
+        logger.info("Added " + syntaxBlacklist.size() + " blacklist entries");
     }
 
     /**

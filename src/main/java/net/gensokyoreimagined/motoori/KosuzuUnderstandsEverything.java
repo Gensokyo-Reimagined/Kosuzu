@@ -112,15 +112,13 @@ public class KosuzuUnderstandsEverything implements Listener {
         var message = packet.getChatComponents().read(0);
 
         var json = message.getJson();
-        var component = (TextComponent) JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
+        var component = JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
         var text = parser.getTextMessage(component, player);
 
         if (text != null) {
-            text = parser.removeUnwantedSyntax(text);
             var uuid = database.addMessage(json, text);
 
-            var newComponent = component.content(text)
-                .hoverEvent(
+            var newComponent = component.hoverEvent(
                     Component
                         .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
                         .color(NamedTextColor.GRAY)
