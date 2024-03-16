@@ -106,6 +106,7 @@ public class KosuzuUnderstandsEverything implements Listener {
         event.setPacket(packet);
     }
 
+    // FIXME: Currently, there is no way to distinguish true server messages in order to avoid removing blacklisted substrings
     private void onServerChatSend(PacketEvent event) {
         var player = event.getPlayer();
         var packet = event.getPacket();
@@ -113,9 +114,14 @@ public class KosuzuUnderstandsEverything implements Listener {
 
         var json = message.getJson();
         var component = JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
+        // this is just to know if this is likely a user message
         var text = parser.getTextMessage(component, player);
 
         if (text != null) {
+            // likely a user message, so remove substrings and remake the component
+            json = parser.removeUnwantedSyntax(json);
+            component = JSONComponentSerializer.json().deserialize(json);
+            text = parser.getTextMessage(component, player);
             var uuid = database.addMessage(json, text);
 
             var newComponent = component.hoverEvent(
