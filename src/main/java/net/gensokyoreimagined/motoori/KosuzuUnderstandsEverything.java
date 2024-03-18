@@ -77,14 +77,10 @@ public class KosuzuUnderstandsEverything implements Listener {
         var signature = (ClientboundPlayerChatPacket) packet.getMessageSignatures().getTarget();
         var message = Objects.requireNonNullElseGet(signature.unsignedContent(), () -> net.minecraft.network.chat.Component.literal(signature.body().content()));
 
-		logger.info(message.toString());
-
 		var adventureComponent = JSONComponentSerializer.json().deserialize(message.getString());
 		adventureComponent = parser.removeUnwantedSyntax(adventureComponent);
 		var backTransferJson = JSONComponentSerializer.json().serialize(adventureComponent);
 		message = net.minecraft.network.chat.Component.Serializer.fromJson(backTransferJson);
-
-		logger.info(message.toString());
 
         var boundChatType = signature.chatType().resolve(MinecraftServer.getServer().registryAccess());
 
