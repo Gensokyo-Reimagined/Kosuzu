@@ -24,11 +24,12 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
+import net.minecraft.network.protocol.game.ServerboundChatPacket;
 import net.minecraft.server.MinecraftServer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -38,6 +39,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 public class KosuzuUnderstandsEverything implements Listener {
     private final Logger logger;
@@ -51,6 +53,7 @@ public class KosuzuUnderstandsEverything implements Listener {
         geolocation = new KosuzuKnowsWhereYouLive(kosuzu);
         parser = new KosuzuParsesEverything(kosuzu);
 
+		
         ProtocolManager manager = ProtocolLibrary.getProtocolManager();
         manager.addPacketListener(new PacketAdapter(kosuzu, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
             @Override
@@ -74,6 +77,15 @@ public class KosuzuUnderstandsEverything implements Listener {
         var signature = (ClientboundPlayerChatPacket) packet.getMessageSignatures().getTarget();
         var message = Objects.requireNonNullElseGet(signature.unsignedContent(), () -> net.minecraft.network.chat.Component.literal(signature.body().content()));
 
+		logger.info(message.toString());
+
+		var adventureComponent = JSONComponentSerializer.json().deserialize(message.getString());
+		adventureComponent = parser.removeUnwantedSyntax(adventureComponent);
+		var backTransferJson = JSONComponentSerializer.json().serialize(adventureComponent);
+		message = net.minecraft.network.chat.Component.Serializer.fromJson(backTransferJson);
+
+		logger.info(message.toString());
+
         var boundChatType = signature.chatType().resolve(MinecraftServer.getServer().registryAccess());
 
         if (boundChatType.isEmpty()) {
@@ -83,8 +95,9 @@ public class KosuzuUnderstandsEverything implements Listener {
 
         // Use the vanilla decorated content and then convert it to Adventure API
         var decoratedContent = boundChatType.orElseThrow().decorate(message);
-        var text = parser.removeUnwantedSyntax(decoratedContent.getString());
+        var text = decoratedContent.getString();
         var component = Component.text(text);
+		
         // Only to get the JSON
         var json = JSONComponentSerializer.json().serialize(component);
 
@@ -106,7 +119,6 @@ public class KosuzuUnderstandsEverything implements Listener {
         event.setPacket(packet);
     }
 
-    // FIXME: Currently, there is no way to distinguish true server messages in order to avoid removing blacklisted substrings
     private void onServerChatSend(PacketEvent event) {
         var player = event.getPlayer();
         var packet = event.getPacket();
@@ -114,14 +126,9 @@ public class KosuzuUnderstandsEverything implements Listener {
 
         var json = message.getJson();
         var component = JSONComponentSerializer.json().deserialize(json); // Adventure API from raw JSON
-        // this is just to know if this is likely a user message
         var text = parser.getTextMessage(component, player);
 
         if (text != null) {
-            // likely a user message, so remove substrings and remake the component
-            json = parser.removeUnwantedSyntax(json);
-            component = JSONComponentSerializer.json().deserialize(json);
-            text = parser.getTextMessage(component, player);
             var uuid = database.addMessage(json, text);
 
             var newComponent = component.hoverEvent(
