@@ -21,6 +21,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -58,6 +59,8 @@ public final class Kosuzu extends JavaPlugin {
         );
 
         config.addDefault("match.include", regexDefaults);
+
+        config.addDefault("match.blacklist", Collections.<String>emptyList());
 
         config.options().copyDefaults(true);
         saveConfig();

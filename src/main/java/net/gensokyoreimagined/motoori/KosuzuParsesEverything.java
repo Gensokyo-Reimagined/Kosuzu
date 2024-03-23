@@ -16,12 +16,14 @@
 package net.gensokyoreimagined.motoori;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -29,8 +31,11 @@ import java.util.regex.Pattern;
 public class KosuzuParsesEverything {
     private final ArrayList<Pattern> regexes = new ArrayList<>();
     private final Map<String, Map<UUID, Pattern>> placeholderRegexes = new HashMap<>();
+    private final List<String> syntaxBlacklist;
 
     public KosuzuParsesEverything(Kosuzu kosuzu) {
+        var logger = kosuzu.getLogger();
+
         var config = kosuzu.config;
         var regexes = config.getStringList("match.include");
 
@@ -42,7 +47,11 @@ public class KosuzuParsesEverything {
             }
         }
 
-        kosuzu.getLogger().info("Prepared " + this.regexes.size() + " regexes");
+        logger.info("Prepared " + this.regexes.size() + " regexes");
+
+        syntaxBlacklist = config.getStringList("match.blacklist");
+
+        logger.info("Added " + syntaxBlacklist.size() + " blacklist entries");
     }
 
     /**
@@ -75,5 +84,41 @@ public class KosuzuParsesEverything {
         }
 
         return null;
+    }
+
+    /**
+     * Removes unwanted chat syntax from the message, in case someone's trying to be a neerdowell.
+     * Examples of syntax include chat prefixes and role prefixes.
+     * @param message The message to modify.
+     * @return The same message after modification
+     */
+    public Component removeUnwantedSyntax(Component message) {
+        // only plain text components are of concern for now
+        if (!(message instanceof TextComponent)) return message;
+
+        for (var childComponent : message.children()) {
+            if (!(childComponent instanceof TextComponent)) return message;
+        }
+
+        var messagePlaintext = (TextComponent) message;
+        var componentContent = messagePlaintext.content();
+        boolean matched;
+        do {
+            matched = false;
+            for (var syntaxBlacklistString : syntaxBlacklist) {
+                matched = matched || componentContent.indexOf(syntaxBlacklistString) != -1;
+                componentContent = componentContent.replaceAll(syntaxBlacklistString, "");
+            }
+        } while (matched);
+        message = messagePlaintext.content(componentContent);
+
+        var currentChildren = message.children();
+        var newChildren = new ArrayList<Component>(currentChildren.size());
+        for (var childComponent : currentChildren) {
+            newChildren.add(removeUnwantedSyntax(childComponent));
+        }
+        message.children(newChildren);
+
+        return message;
     }
 }
