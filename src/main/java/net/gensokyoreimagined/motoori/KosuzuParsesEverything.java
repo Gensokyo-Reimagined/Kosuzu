@@ -94,15 +94,15 @@ public class KosuzuParsesEverything {
      * @return The same message after modification
      */
     public Component removeUnwantedSyntax(Component message) {
-		// only plain text components are of concern for now
-		if (!(message instanceof TextComponent)) return message;
+        // only plain text components are of concern for now
+        if (!(message instanceof TextComponent)) return message;
 
-		for (var childComponent : message.children()) {
-			if (!(childComponent instanceof TextComponent)) return message;
-		}
+        for (var childComponent : message.children()) {
+            if (!(childComponent instanceof TextComponent)) return message;
+        }
 
-		var messagePlaintext = (TextComponent) message;
-		var componentContent = messagePlaintext.content();
+        var messagePlaintext = (TextComponent) message;
+        var componentContent = messagePlaintext.content();
         boolean matched;
         do {
             matched = false;
@@ -111,14 +111,14 @@ public class KosuzuParsesEverything {
                 componentContent = componentContent.replaceAll(syntaxBlacklistString, "");
             }
         } while (matched);
-		message = messagePlaintext.content(componentContent);
+        message = messagePlaintext.content(componentContent);
 
-		var currentChildren = message.children();
-		var newChildren = new ArrayList<Component>(currentChildren.size());
-		for (var childComponent : currentChildren) {
-			newChildren.add(removeUnwantedSyntax(childComponent));
-		}
-		message.children(newChildren);
+        var currentChildren = message.children();
+        var newChildren = new ArrayList<Component>(currentChildren.size());
+        for (var childComponent : currentChildren) {
+            newChildren.add(removeUnwantedSyntax(childComponent));
+        }
+        message.children(newChildren);
 
         return message;
     }

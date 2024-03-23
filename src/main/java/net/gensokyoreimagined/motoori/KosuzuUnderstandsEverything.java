@@ -23,10 +23,13 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
+//import io.papermc.paper.event.player.AsyncChatEvent;
+import io.papermc.paper.event.player.AsyncChatDecorateEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
 import net.minecraft.network.protocol.game.ServerboundChatPacket;
@@ -53,34 +56,42 @@ public class KosuzuUnderstandsEverything implements Listener {
         geolocation = new KosuzuKnowsWhereYouLive(kosuzu);
         parser = new KosuzuParsesEverything(kosuzu);
 
-		
-        ProtocolManager manager = ProtocolLibrary.getProtocolManager();
+        
+        // ProtocolManager manager = ProtocolLibrary.getProtocolManager();
+        /*
         manager.addPacketListener(new PacketAdapter(kosuzu, ListenerPriority.NORMAL, PacketType.Play.Server.CHAT) {
             @Override
             public void onPacketSending(PacketEvent event) {
                 onClientChatSend(event);
             }
         });
+        */
 
+        /*
         manager.addPacketListener(new PacketAdapter(kosuzu, ListenerPriority.NORMAL, PacketType.Play.Server.SYSTEM_CHAT) {
             @Override
             public void onPacketSending(PacketEvent event) {
                 onServerChatSend(event);
             }
         });
+        */
     }
 
-    private void onClientChatSend(PacketEvent event) {
+    /*
+    @EventHandler(priority = EventPriority.LOWEST)
+    private void onChatTransfer(AsyncChatEvent event) {
         var player = event.getPlayer();
-        var packet = event.getPacket();
+        //var packet = event.getPacket();
 
-        var signature = (ClientboundPlayerChatPacket) packet.getMessageSignatures().getTarget();
-        var message = Objects.requireNonNullElseGet(signature.unsignedContent(), () -> net.minecraft.network.chat.Component.literal(signature.body().content()));
+        //var signature = (ClientboundPlayerChatPacket) packet.getMessageSignatures().getTarget();
+        //var message = Objects.requireNonNullElseGet(signature.unsignedContent(), () -> net.minecraft.network.chat.Component.literal(signature.body().content()));
+        var message = Objects.requireNonNullElse(event.signedMessage().unsignedContent(), event.message());
 
-		var adventureComponent = JSONComponentSerializer.json().deserialize(message.getString());
-		adventureComponent = parser.removeUnwantedSyntax(adventureComponent);
-		var backTransferJson = JSONComponentSerializer.json().serialize(adventureComponent);
-		message = net.minecraft.network.chat.Component.Serializer.fromJson(backTransferJson);
+        //var adventureComponent = JSONComponentSerializer.json().deserialize(message.getString());
+        //adventureComponent = parser.removeUnwantedSyntax(adventureComponent);
+        message = parser.removeUnwantedSyntax(message);
+        //var backTransferJson = JSONComponentSerializer.json().serialize(adventureComponent);
+        //message = net.minecraft.network.chat.Component.Serializer.fromJson(backTransferJson);
 
         var boundChatType = signature.chatType().resolve(MinecraftServer.getServer().registryAccess());
 
@@ -93,13 +104,14 @@ public class KosuzuUnderstandsEverything implements Listener {
         var decoratedContent = boundChatType.orElseThrow().decorate(message);
         var text = decoratedContent.getString();
         var component = Component.text(text);
-		
+        var component = event.renderer().render(player, player.displayName(), message, player);
+        
         // Only to get the JSON
         var json = JSONComponentSerializer.json().serialize(component);
 
-        var uuid = database.addMessage(json, message.getString());
+        var uuid = database.addMessage(json, PlainTextComponentSerializer.plainText().serialize(message));
 
-        var newComponent = component.hoverEvent(
+        var newComponent = message.hoverEvent(
                 Component
                     .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
                     .color(NamedTextColor.GRAY)
@@ -113,8 +125,41 @@ public class KosuzuUnderstandsEverything implements Listener {
         packet = new PacketContainer(PacketType.Play.Server.SYSTEM_CHAT);
         packet.getChatComponents().write(0, WrappedChatComponent.fromJson(newJson));
         event.setPacket(packet);
+        event.message(message);
+    }
+    */
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    private void onChatDecorateEarliest(AsyncChatDecorateEvent event) {
+        var player = event.player();
+        if (player == null) return;
+
+        // filter early to adjust for following decorators
+        event.result(parser.removeUnwantedSyntax(event.originalMessage()));
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    private void onChatDecorateLatest(AsyncChatDecorateEvent event) {
+        var player = event.player();
+        if (player == null) return;
+
+        // retrieve original filtered message
+        var message = parser.removeUnwantedSyntax(event.originalMessage());
+
+        var json = JSONComponentSerializer.json().serialize(event.result());
+        var uuid = database.addMessage(json, PlainTextComponentSerializer.plainText().serialize(message));
+
+        event.result(event.result().hoverEvent(
+                Component
+                    .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
+                    .color(NamedTextColor.GRAY)
+            )
+            .clickEvent(
+                ClickEvent.runCommand("/kosuzu translate " + uuid.toString())
+            ));
+    }
+
+    /*
     private void onServerChatSend(PacketEvent event) {
         var player = event.getPlayer();
         var packet = event.getPacket();
@@ -140,6 +185,7 @@ public class KosuzuUnderstandsEverything implements Listener {
             packet.getChatComponents().write(0, WrappedChatComponent.fromJson(newJson));
         }
     }
+    */
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(@NotNull PlayerJoinEvent event) {
