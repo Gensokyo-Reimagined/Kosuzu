@@ -17,8 +17,10 @@ package net.gensokyoreimagined.motoori;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
+import org.intellij.lang.annotations.RegExp;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -93,32 +95,24 @@ public class KosuzuParsesEverything {
      * @return The same message after modification
      */
     public Component removeUnwantedSyntax(Component message) {
-        // only plain text components are of concern for now
-        if (!(message instanceof TextComponent)) return message;
-
-        for (var childComponent : message.children()) {
-            if (!(childComponent instanceof TextComponent)) return message;
-        }
-
-        var messagePlaintext = (TextComponent) message;
-        var componentContent = messagePlaintext.content();
-        boolean matched;
-        do {
-            matched = false;
-            for (var syntaxBlacklistString : syntaxBlacklist) {
-                matched = matched || componentContent.indexOf(syntaxBlacklistString) != -1;
-                componentContent = componentContent.replaceAll(syntaxBlacklistString, "");
+        message = message.replaceText((text) -> {
+            for (@RegExp var syntaxBlacklistString : syntaxBlacklist) {
+                text.match(syntaxBlacklistString).replacement("");
             }
-        } while (matched);
-        message = messagePlaintext.content(componentContent);
-
-        var currentChildren = message.children();
-        var newChildren = new ArrayList<Component>(currentChildren.size());
-        for (var childComponent : currentChildren) {
-            newChildren.add(removeUnwantedSyntax(childComponent));
-        }
-        message.children(newChildren);
+        });
 
         return message;
+    }
+
+    private final String URL_REGEX = "\\bhttps?://[0-9a-zA-Z](?:[-.\\w]*[0-9a-zA-Z])*(?::(0-9)*)*(/?)(?:[a-zA-Z0-9\\-.?,'/\\\\+&amp;%$#_]*)?\\b";
+    private final Pattern URL_PATTERN = Pattern.compile(URL_REGEX);
+
+    public Component makeLinksClickable(Component message) {
+        return message.replaceText((text) -> {
+            text.match(URL_PATTERN).replacement((match) -> {
+                var url = match.content();
+                return Component.text(url).clickEvent(ClickEvent.openUrl(url));
+            });
+        });
     }
 }
