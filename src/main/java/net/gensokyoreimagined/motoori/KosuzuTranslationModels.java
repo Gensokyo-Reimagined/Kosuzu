@@ -88,8 +88,6 @@ public class KosuzuTranslationModels {
         DeepLMobileLanguage lang;
         @SerializedName("timestamp")
         long timestamp;
-        // @SerializedName("commonJobParams")
-        // DeepLMobileCommonJobParams commonJobParams;
 
         DeepLMobileParams(String input, String targetLanguage) {
             texts = List.of(new DeepLMobileText(input));

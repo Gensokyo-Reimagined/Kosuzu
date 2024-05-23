@@ -443,9 +443,7 @@ public class KosuzuRemembersEverything implements Closeable {
         UUID uuid = UUID.randomUUID();
 
         // Invoke addMessageSQL asynchronously
-        kosuzu.getServer().getScheduler().runTaskAsynchronously(kosuzu, () -> {
-            addMessageSQL(uuid, json, message);
-        });
+        kosuzu.getServer().getScheduler().runTaskAsynchronously(kosuzu, () -> addMessageSQL(uuid, json, message));
 
         return uuid;
     }

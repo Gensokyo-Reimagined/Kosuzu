@@ -30,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 import java.util.logging.Logger;
 
+@SuppressWarnings("UnstableApiUsage")
 public class KosuzuUnderstandsEverything implements Listener {
     private final Logger logger;
     private final KosuzuRemembersEverything database;

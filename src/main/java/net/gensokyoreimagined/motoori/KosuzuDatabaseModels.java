@@ -88,13 +88,13 @@ public class KosuzuDatabaseModels {
         }
     }
 
-    public static record User(UUID uuid, String lastKnownName, String defaultLanguage, TranslationMode translationMode) {}
+    public record User(UUID uuid, String lastKnownName, String defaultLanguage, TranslationMode translationMode) {}
 
-    public static enum TranslationMode {
+    public enum TranslationMode {
         OFF(0), ON(1), FORCE(2);
         private final int value;
 
-        private TranslationMode(int value) {
+        TranslationMode(int value) {
             this.value = value;
         }
 

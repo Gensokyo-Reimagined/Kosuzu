@@ -16,7 +16,6 @@
 package net.gensokyoreimagined.motoori;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
@@ -108,11 +107,9 @@ public class KosuzuParsesEverything {
     private final Pattern URL_PATTERN = Pattern.compile(URL_REGEX);
 
     public Component makeLinksClickable(Component message) {
-        return message.replaceText((text) -> {
-            text.match(URL_PATTERN).replacement((match) -> {
-                var url = match.content();
-                return Component.text(url).clickEvent(ClickEvent.openUrl(url));
-            });
-        });
+        return message.replaceText((text) -> text.match(URL_PATTERN).replacement((match) -> {
+            var url = match.content();
+            return Component.text(url).clickEvent(ClickEvent.openUrl(url));
+        }));
     }
 }
