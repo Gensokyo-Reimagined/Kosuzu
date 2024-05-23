@@ -41,6 +41,7 @@ import java.util.logging.Logger;
 import static net.gensokyoreimagined.motoori.KosuzuDatabaseModels.*;
 
 public class KosuzuRemembersEverything implements Closeable {
+    private final Kosuzu kosuzu;
     private final YamlConfiguration translations;
     private final BasicDataSource dataSource = new BasicDataSource();
     private final FileConfiguration config;
@@ -49,6 +50,7 @@ public class KosuzuRemembersEverything implements Closeable {
     private boolean isSqlite = false;
 
     public KosuzuRemembersEverything(Kosuzu kosuzu) {
+        this.kosuzu = kosuzu;
         config = kosuzu.config;
         logger = kosuzu.getLogger();
 
@@ -219,6 +221,11 @@ public class KosuzuRemembersEverything implements Closeable {
         }
     }
 
+    /**
+     * Change MySQL queries to be compatible with SQLite
+     * @param sql The MySQL-compatible SQL query
+     * @return The SQLite-compatible SQL query
+     */
     private String s(String sql) {
         if (!isSqlite) {
             return sql;
@@ -368,7 +375,7 @@ public class KosuzuRemembersEverything implements Closeable {
 
     public Translation getTranslation(@NotNull UUID message, @NotNull UUID user) {
         try (var connection = getConnection()) {
-            try (var statement = connection.prepareStatement("SELECT user_message.json_msg, message.uuid AS message_id, message.language, message.text, message_translation.text AS translation, `user`.`default_language` FROM `user_message` LEFT JOIN `message` ON message.uuid = user_message.message_id LEFT JOIN `user` ON `user`.`uuid` = ? LEFT JOIN `message_translation` ON message_translation.message_id = message.uuid AND user.default_language = message_translation.language WHERE `user_message`.`uuid` = ?;")) {
+            try (var statement = connection.prepareStatement("SELECT user_message.json_msg, message.uuid AS message_id, message.language, message.text, message_translation.text AS translation, `user`.`default_language` FROM `user_message_lookup` INNER JOIN `user_message` ON user_message.uuid = user_message_lookup.user_message_id LEFT JOIN `message` ON message.uuid = user_message.message_id LEFT JOIN `user` ON `user`.`uuid` = ? LEFT JOIN `message_translation` ON message_translation.message_id = message.uuid AND user.default_language = message_translation.language WHERE `user_message_lookup`.`uuid` = ?;")) {
                 statement.setString(1, user.toString());
                 statement.setString(2, message.toString());
                 try (var result = statement.executeQuery()) {
@@ -419,7 +426,7 @@ public class KosuzuRemembersEverything implements Closeable {
             .build(
                     new CacheLoader<>() {
                         public @NotNull UUID load(@NotNull Message json) {
-                            return addMessageSQL(json.getJSON(), json.getMessage());
+                            return addMessageSQLWrapper(json.getJSON(), json.getMessage());
                         }
                     });
 
@@ -427,13 +434,27 @@ public class KosuzuRemembersEverything implements Closeable {
         return messageCache.getUnchecked(new Message(message, json));
     }
 
-    private @NotNull UUID addMessageSQL(@NotNull String json, @NotNull String message) {
-        UUID uuid = null;
+    /**
+     * OK, so second issue: what if SQL is slow? We can't wait for SQL to get a UUID, so we generate one ahead of time.
+     * So, we've created a new table called `user_message_lookup` that links the eagerly generated UUID to the actual UUID.
+     * Note that it's possible that a person tries to translate a message before it's been added to the database (async).
+     */
+    private @NotNull UUID addMessageSQLWrapper(@NotNull String json, @NotNull String message) {
+        UUID uuid = UUID.randomUUID();
 
+        // Invoke addMessageSQL asynchronously
+        kosuzu.getServer().getScheduler().runTaskAsynchronously(kosuzu, () -> {
+            addMessageSQL(uuid, json, message);
+        });
+
+        return uuid;
+    }
+
+    private void addMessageSQL(@NotNull UUID lookupUUID, @NotNull String json, @NotNull String message) {
         try (var connection = getConnection()) {
-            // TODO this should be moved into a stored procedure (dropping support for SQLite)
             UUID messageUUID = null;
 
+            // Store the message contents (plain text) in the database
             try (var statement = connection.prepareStatement("SELECT uuid FROM `message` WHERE `text` = ?")) {
                 statement.setString(1, message);
                 try (var data = statement.executeQuery()) {
@@ -452,6 +473,8 @@ public class KosuzuRemembersEverything implements Closeable {
                 }
             }
 
+            UUID uuid = null;
+            // Store the JSON Minecraft message in the database
             try (var statement = connection.prepareStatement("SELECT `uuid` FROM `user_message` WHERE `json_msg` = ?")) {
                 statement.setString(1, json);
                 try (var data = statement.executeQuery()) {
@@ -471,12 +494,17 @@ public class KosuzuRemembersEverything implements Closeable {
                     statement.execute();
                 }
             }
+
+            // Finally, store the lookup UUID
+            try (var statement = connection.prepareStatement("INSERT INTO `user_message_lookup` (`uuid`, `user_message_id`) VALUES (?, ?)")) {
+                statement.setString(1, lookupUUID.toString());
+                statement.setString(2, uuid.toString());
+                statement.execute();
+            }
         } catch (SQLException e) {
             logger.severe("Failed to add message!");
             logger.severe(e.getMessage());
         }
-
-        return uuid == null ? UUID.randomUUID() : uuid;
     }
 
     @Override

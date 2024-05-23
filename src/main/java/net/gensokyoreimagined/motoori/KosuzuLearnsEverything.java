@@ -19,6 +19,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -28,11 +29,12 @@ import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
 public class KosuzuLearnsEverything implements CommandExecutor {
-
+    private final Kosuzu kosuzu;
     private final KosuzuRemembersEverything database;
     private final KosuzuTranslatesEverything translator;
 
     public KosuzuLearnsEverything(Kosuzu kosuzu) {
+        this.kosuzu = kosuzu;
         database = kosuzu.database;
         translator = new KosuzuTranslatesEverything(kosuzu);
     }
@@ -45,17 +47,17 @@ public class KosuzuLearnsEverything implements CommandExecutor {
         }
 
         if (args[0].equalsIgnoreCase("default")) {
-            changeUserLanguage(sender, args);
+            Bukkit.getScheduler().runTaskAsynchronously(kosuzu, () -> changeUserLanguage(sender, args));
             return true;
         }
 
         if (args[0].equalsIgnoreCase("translate")) {
-            translateMessage(sender, args);
+            Bukkit.getScheduler().runTaskAsynchronously(kosuzu, () -> translateMessage(sender, args));
             return true;
         }
 
         if (args[0].equalsIgnoreCase("auto")) {
-            setAuto(sender, args);
+            Bukkit.getScheduler().runTaskAsynchronously(kosuzu, () -> setAuto(sender, args));
             return true;
         }
 

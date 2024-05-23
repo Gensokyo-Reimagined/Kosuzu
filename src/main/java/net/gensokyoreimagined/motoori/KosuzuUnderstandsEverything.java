@@ -49,7 +49,10 @@ public class KosuzuUnderstandsEverything implements Listener {
         if (player == null) return;
 
         // filter early to adjust for following decorators
-        event.result(parser.removeUnwantedSyntax(event.originalMessage()));
+        var message = event.originalMessage();
+        message = parser.removeUnwantedSyntax(message);
+        // Don't make links clickable twice
+        event.result(message);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -58,7 +61,9 @@ public class KosuzuUnderstandsEverything implements Listener {
         if (player == null) return;
 
         // retrieve original filtered message
-        var message = parser.removeUnwantedSyntax(event.originalMessage());
+        var message = event.originalMessage();
+        message = parser.removeUnwantedSyntax(message);
+        message = parser.makeLinksClickable(message);
 
         var json = JSONComponentSerializer.json().serialize(event.result());
         var uuid = database.addMessage(json, PlainTextComponentSerializer.plainText().serialize(message));
