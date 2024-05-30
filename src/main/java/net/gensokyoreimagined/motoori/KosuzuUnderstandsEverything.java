@@ -65,20 +65,23 @@ public class KosuzuUnderstandsEverything implements Listener {
         // retrieve original filtered message
         var message = event.originalMessage();
         message = parser.removeUnwantedSyntax(message);
-        message = parser.makeLinksClickable(message);
         logger.info(JSONComponentSerializer.json().serialize(message));
 
         var json = JSONComponentSerializer.json().serialize(event.result());
         var uuid = database.addMessage(json, PlainTextComponentSerializer.plainText().serialize(message));
 
-        event.result(event.result().hoverEvent(
+        var response = event.result().hoverEvent(
                 Component
-                    .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
-                    .color(NamedTextColor.GRAY)
+                        .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
+                        .color(NamedTextColor.GRAY)
             )
             .clickEvent(
                 ClickEvent.runCommand("/kosuzu translate " + uuid.toString())
-            ));
+            );
+
+        response = parser.makeLinksClickable(response);
+
+        event.result(response);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
