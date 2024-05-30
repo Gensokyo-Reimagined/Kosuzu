@@ -26,7 +26,6 @@ repositories {
 }
 
 dependencies {
-    compileOnly "com.comphenix.protocol:ProtocolLib:5.2.0-SNAPSHOT"
     implementation 'com.github.mizosoft.methanol:methanol:1.7.0'
     implementation 'com.github.mizosoft.methanol:methanol-brotli:1.7.0'
     implementation "org.xerial:sqlite-jdbc:3.45.0.0"

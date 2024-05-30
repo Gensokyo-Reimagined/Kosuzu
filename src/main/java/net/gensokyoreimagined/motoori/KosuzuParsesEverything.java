@@ -16,23 +16,21 @@
 package net.gensokyoreimagined.motoori;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.intellij.lang.annotations.RegExp;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class KosuzuParsesEverything {
     private final ArrayList<Pattern> regexes = new ArrayList<>();
     private final Map<String, Map<UUID, Pattern>> placeholderRegexes = new HashMap<>();
-    private final List<String> syntaxBlacklist;
+
+    private final List<TextReplacementConfig> syntaxReplacementConfigs;
 
     public KosuzuParsesEverything(Kosuzu kosuzu) {
         var logger = kosuzu.getLogger();
@@ -50,7 +48,15 @@ public class KosuzuParsesEverything {
 
         logger.info("Prepared " + this.regexes.size() + " regexes");
 
-        syntaxBlacklist = config.getStringList("match.blacklist");
+        List<String> syntaxBlacklist = config.getStringList("match.blacklist");
+
+        var replacementConfigs = new ArrayList<TextReplacementConfig>();
+
+        for (var syntax : syntaxBlacklist) {
+            replacementConfigs.add(TextReplacementConfig.builder().matchLiteral(syntax).replacement("").build());
+        }
+
+        syntaxReplacementConfigs = Collections.unmodifiableList(replacementConfigs);
 
         logger.info("Added " + syntaxBlacklist.size() + " blacklist entries");
     }
@@ -94,11 +100,9 @@ public class KosuzuParsesEverything {
      * @return The same message after modification
      */
     public Component removeUnwantedSyntax(Component message) {
-        message = message.replaceText((text) -> {
-            for (@RegExp var syntaxBlacklistString : syntaxBlacklist) {
-                text.match(syntaxBlacklistString).replacement("");
-            }
-        });
+        for (var replacementConfig : syntaxReplacementConfigs) {
+            message = message.replaceText(replacementConfig);
+        }
 
         return message;
     }
@@ -107,9 +111,11 @@ public class KosuzuParsesEverything {
     private final Pattern URL_PATTERN = Pattern.compile(URL_REGEX);
 
     public Component makeLinksClickable(Component message) {
-        return message.replaceText((text) -> text.match(URL_PATTERN).replacement((match) -> {
+        final var urlReplacement = TextReplacementConfig.builder().match(URL_PATTERN).replacement((match) -> {
             var url = match.content();
             return Component.text(url).clickEvent(ClickEvent.openUrl(url));
-        }));
+        }).build();
+
+        return message.replaceText(urlReplacement);
     }
 }

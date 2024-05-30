@@ -52,6 +52,7 @@ public class KosuzuUnderstandsEverything implements Listener {
         // filter early to adjust for following decorators
         var message = event.originalMessage();
         message = parser.removeUnwantedSyntax(message);
+        logger.info(JSONComponentSerializer.json().serialize(message));
         // Don't make links clickable twice
         event.result(message);
     }
@@ -65,6 +66,7 @@ public class KosuzuUnderstandsEverything implements Listener {
         var message = event.originalMessage();
         message = parser.removeUnwantedSyntax(message);
         message = parser.makeLinksClickable(message);
+        logger.info(JSONComponentSerializer.json().serialize(message));
 
         var json = JSONComponentSerializer.json().serialize(event.result());
         var uuid = database.addMessage(json, PlainTextComponentSerializer.plainText().serialize(message));
