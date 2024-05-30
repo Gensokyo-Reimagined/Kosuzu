@@ -52,7 +52,6 @@ public class KosuzuUnderstandsEverything implements Listener {
         // filter early to adjust for following decorators
         var message = event.originalMessage();
         message = parser.removeUnwantedSyntax(message);
-        logger.info(JSONComponentSerializer.json().serialize(message));
         // Don't make links clickable twice
         event.result(message);
     }
@@ -65,19 +64,18 @@ public class KosuzuUnderstandsEverything implements Listener {
         // retrieve original filtered message
         var message = event.originalMessage();
         message = parser.removeUnwantedSyntax(message);
-        logger.info(JSONComponentSerializer.json().serialize(message));
 
         var json = JSONComponentSerializer.json().serialize(event.result());
         var uuid = database.addMessage(json, PlainTextComponentSerializer.plainText().serialize(message));
 
         var response = event.result().hoverEvent(
-                Component
-                        .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
-                        .color(NamedTextColor.GRAY)
-            )
-            .clickEvent(
-                ClickEvent.runCommand("/kosuzu translate " + uuid.toString())
-            );
+                        Component
+                                .text(database.getTranslation("translate.hover", database.getUserDefaultLanguage(player.getUniqueId())))
+                                .color(NamedTextColor.GRAY)
+                )
+                .clickEvent(
+                        ClickEvent.runCommand("/kosuzu translate " + uuid.toString())
+                );
 
         response = parser.makeLinksClickable(response);
 
@@ -138,12 +136,12 @@ public class KosuzuUnderstandsEverything implements Listener {
             }
 
             player.sendMessage(
-                Kosuzu.HEADER
-                    .append(Component.text(database.getTranslation("welcome.first", country).replace("%username%", name), NamedTextColor.GRAY))
-                    .append(Component.newline())
-                    .append(Component.text(database.getTranslation("welcome.second", country), NamedTextColor.GRAY))
-                    .append(Component.newline())
-                    .append(Component.text(database.getTranslation("welcome.third", country), NamedTextColor.GRAY))
+                    Kosuzu.HEADER
+                            .append(Component.text(database.getTranslation("welcome.first", country).replace("%username%", name), NamedTextColor.GRAY))
+                            .append(Component.newline())
+                            .append(Component.text(database.getTranslation("welcome.second", country), NamedTextColor.GRAY))
+                            .append(Component.newline())
+                            .append(Component.text(database.getTranslation("welcome.third", country), NamedTextColor.GRAY))
             );
         }
     }
