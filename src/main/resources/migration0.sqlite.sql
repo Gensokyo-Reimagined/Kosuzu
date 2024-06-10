@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS `message_translation`
     FOREIGN KEY (`language`) REFERENCES `language` (`code`) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX `message_translation_index` ON `message_translation` (`message_id`, `language`);
+CREATE UNIQUE INDEX IF NOT EXISTS `message_translation_index` ON `message_translation` (`message_id`, `language`);
 
 CREATE TABLE IF NOT EXISTS `user_message`
 (
@@ -56,4 +56,4 @@ CREATE TABLE IF NOT EXISTS `user_message`
 );
 
 -- noinspection SqlResolve
-CREATE INDEX `user_message_json_msg_idx` ON `user_message` (json_msg);
+CREATE INDEX IF NOT EXISTS `user_message_json_msg_idx` ON `user_message` (json_msg);
