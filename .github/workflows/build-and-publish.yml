@@ -19,16 +19,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: JDK 17 setup
+    - name: JDK 21 setup
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '21'
         distribution: 'temurin'
         server-id: github
         settings-path: ${{ github.workspace }}
 
     - name: Gradle plz build
-      uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
+      uses: gradle/actions/setup-gradle@v3
       with:
         arguments: spotlessApply build shadowJar
 
@@ -39,7 +39,7 @@ jobs:
         path: build/libs/*-all.jar
 
     - name: Reposilite hates my posterior
-      uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
+      uses: gradle/actions/setup-gradle@v3
       with:
         arguments: publish
       env:
