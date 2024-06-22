@@ -37,6 +37,10 @@ dependencies {
 shadowJar {
     project.configurations.runtimeClasspath.canBeResolved = true
     configurations = [project.configurations.runtimeClasspath]
+
+    archiveFileName.set("%s-%s.jar".formatted(project.name, project.version))
+    archiveClassifier.set("")
+    archiveVersion.set("")
 }
 
 def targetJavaVersion = 21
@@ -54,6 +58,8 @@ tasks.withType(JavaCompile).configureEach {
         options.release.set(targetJavaVersion)
     }
 }
+
+tasks.build.dependsOn(shadowJar)
 
 processResources {
     def props = [version: version]
