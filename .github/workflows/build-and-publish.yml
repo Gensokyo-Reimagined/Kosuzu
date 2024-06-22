@@ -36,7 +36,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: kosuzu-plugin
-        path: build/libs/*-all.jar
+        path: build/libs/*.jar
 
     - name: Reposilite hates my posterior
       uses: gradle/actions/setup-gradle@v3
