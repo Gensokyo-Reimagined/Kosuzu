@@ -31,7 +31,7 @@ dependencies {
     implementation "com.mysql:mysql-connector-j:8.3.0"
     implementation "org.apache.commons:commons-dbcp2:2.11.0"
     implementation "org.apache.commons:commons-pool2:2.12.0" // can't reload plugin without this
-    compileOnly "io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT"
+    compileOnly "io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT"
 }
 
 shadowJar {
@@ -75,15 +75,15 @@ configurations {
 }
 
 def jarFile = file("build/libs/%s-%s.jar".formatted(project.name, project.version))
-def jarArtifact = artifacts.add("conf", jarFile) {
-    type = "jar"
-    builtBy("jar")
+def shadowJar = artifacts.add("conf", jarFile) {
+    type = "shadowJar"
+    builtBy("shadowJar")
 }
 
 publishing {
     publications {
         maven(MavenPublication) {
-            artifact jarArtifact
+            artifact shadowJar
             group "plugins"
         }
     }
