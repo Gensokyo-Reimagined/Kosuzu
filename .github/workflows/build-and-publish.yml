@@ -33,7 +33,7 @@ jobs:
         arguments: spotlessApply build shadowJar
 
     - name: GitHub save this jar for me kthx
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: kosuzu-plugin
         path: build/libs/*.jar
