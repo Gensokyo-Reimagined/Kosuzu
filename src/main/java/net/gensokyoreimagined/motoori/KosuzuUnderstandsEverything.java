@@ -33,12 +33,14 @@ import java.util.logging.Logger;
 @SuppressWarnings("UnstableApiUsage")
 public class KosuzuUnderstandsEverything implements Listener {
     private final Logger logger;
+    private final Kosuzu plugin;
     private final KosuzuRemembersEverything database;
     private final KosuzuKnowsWhereYouLive geolocation;
     private final KosuzuParsesEverything parser;
 
     public KosuzuUnderstandsEverything(Kosuzu kosuzu) {
         logger = kosuzu.getLogger();
+        plugin = kosuzu;
         database = kosuzu.database;
         geolocation = new KosuzuKnowsWhereYouLive(kosuzu);
         parser = new KosuzuParsesEverything(kosuzu);
@@ -90,59 +92,66 @@ public class KosuzuUnderstandsEverything implements Listener {
 
 
         if (database.isNewUser(uuid, name)) {
-            var country = geolocation.getCountryCode(player);
+            geolocation.getCountryCode(player).thenAccept(countryCode -> {
+                var country = countryCode;
 
-            // Special cases for countries (yandere dev would be proud)
+                // Special cases for countries (yandere dev would be proud)
 
-            if (Objects.equals(country, "CN")) country = "ZH"; // Special case for China
-            else if (Objects.equals(country, "TW")) country = "ZH"; // Special case for Taiwan
-            else if (Objects.equals(country, "HK")) country = "ZH"; // Special case for Hong Kong
-            else if (Objects.equals(country, "JP")) country = "JA"; // Special case for Japan
-            else if (Objects.equals(country, "GB")) country = "EN-GB"; // Special case for England
-            else if (Objects.equals(country, "US")) country = "EN-US"; // Special case for United States
-            else if (Objects.equals(country, "CA")) country = "EN-US"; // Special case for Canada
-            else if (Objects.equals(country, "AU")) country = "EN-GB"; // Special case for Australia
+                if (Objects.equals(country, "CN")) country = "ZH"; // Special case for China
+                else if (Objects.equals(country, "TW")) country = "ZH"; // Special case for Taiwan
+                else if (Objects.equals(country, "HK")) country = "ZH"; // Special case for Hong Kong
+                else if (Objects.equals(country, "JP")) country = "JA"; // Special case for Japan
+                else if (Objects.equals(country, "GB")) country = "EN-GB"; // Special case for England
+                else if (Objects.equals(country, "US")) country = "EN-US"; // Special case for United States
+                else if (Objects.equals(country, "CA")) country = "EN-US"; // Special case for Canada
+                else if (Objects.equals(country, "AU")) country = "EN-GB"; // Special case for Australia
 
-            else if (Objects.equals(country, "ES")) country = "ES"; // Special case for Spain
-            else if (Objects.equals(country, "MX")) country = "ES"; // Special case for Mexico
-            else if (Objects.equals(country, "AR")) country = "ES"; // Special case for Argentina
-            else if (Objects.equals(country, "CL")) country = "ES"; // Special case for Chile
-            else if (Objects.equals(country, "CO")) country = "ES"; // Special case for Colombia
-            else if (Objects.equals(country, "PE")) country = "ES"; // Special case for Peru
-            else if (Objects.equals(country, "VE")) country = "ES"; // Special case for Venezuela
-            else if (Objects.equals(country, "EC")) country = "ES"; // Special case for Ecuador
-            else if (Objects.equals(country, "GT")) country = "ES"; // Special case for Guatemala
-            else if (Objects.equals(country, "CU")) country = "ES"; // Special case for Cuba
-            else if (Objects.equals(country, "BO")) country = "ES"; // Special case for Bolivia
-            else if (Objects.equals(country, "DO")) country = "ES"; // Special case for Dominican Republic
-            else if (Objects.equals(country, "HN")) country = "ES"; // Special case for Honduras
+                else if (Objects.equals(country, "ES")) country = "ES"; // Special case for Spain
+                else if (Objects.equals(country, "MX")) country = "ES"; // Special case for Mexico
+                else if (Objects.equals(country, "AR")) country = "ES"; // Special case for Argentina
+                else if (Objects.equals(country, "CL")) country = "ES"; // Special case for Chile
+                else if (Objects.equals(country, "CO")) country = "ES"; // Special case for Colombia
+                else if (Objects.equals(country, "PE")) country = "ES"; // Special case for Peru
+                else if (Objects.equals(country, "VE")) country = "ES"; // Special case for Venezuela
+                else if (Objects.equals(country, "EC")) country = "ES"; // Special case for Ecuador
+                else if (Objects.equals(country, "GT")) country = "ES"; // Special case for Guatemala
+                else if (Objects.equals(country, "CU")) country = "ES"; // Special case for Cuba
+                else if (Objects.equals(country, "BO")) country = "ES"; // Special case for Bolivia
+                else if (Objects.equals(country, "DO")) country = "ES"; // Special case for Dominican Republic
+                else if (Objects.equals(country, "HN")) country = "ES"; // Special case for Honduras
 
-            else if (Objects.equals(country, "BR")) country = "PT-BR"; // Special case for Brazil
-            else if (Objects.equals(country, "PT")) country = "PT-PT"; // Special case for Portugal
+                else if (Objects.equals(country, "BR")) country = "PT-BR"; // Special case for Brazil
+                else if (Objects.equals(country, "PT")) country = "PT-PT"; // Special case for Portugal
 
-            if (country != null) {
-                // Extra searching for languages
-                var languages = database.getLanguages();
-                String finalCountry = country;
-                country = languages.stream().map(KosuzuDatabaseModels.Language::code).filter(code -> code.toUpperCase().contains(finalCountry.toUpperCase())).findFirst().orElse(null);
-            }
-
-            if (country != null) {
-                try {
-                    database.setUserDefaultLanguage(uuid, country);
-                } catch (Exception e) {
-                    logger.warning("Failed to set default language for " + name + " (" + uuid + ") to " + country + ": " + e.getMessage());
+                if (country != null) {
+                    // Extra searching for languages
+                    var languages = database.getLanguages();
+                    String finalCountry = country;
+                    country = languages.stream().map(KosuzuDatabaseModels.Language::code).filter(code -> code.toUpperCase().contains(finalCountry.toUpperCase())).findFirst().orElse(null);
                 }
-            }
 
-            player.sendMessage(
-                    Kosuzu.HEADER
-                            .append(Component.text(database.getTranslation("welcome.first", country).replace("%username%", name), NamedTextColor.GRAY))
-                            .append(Component.newline())
-                            .append(Component.text(database.getTranslation("welcome.second", country), NamedTextColor.GRAY))
-                            .append(Component.newline())
-                            .append(Component.text(database.getTranslation("welcome.third", country), NamedTextColor.GRAY))
-            );
+                if (country != null) {
+                    try {
+                        database.setUserDefaultLanguage(uuid, country);
+                    } catch (Exception e) {
+                        logger.warning("Failed to set default language for " + name + " (" + uuid + ") to " + country + ": " + e.getMessage());
+                    }
+                }
+
+                final String lang = country;
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    if (player.isOnline()) {
+                        player.sendMessage(
+                                Kosuzu.HEADER
+                                        .append(Component.text(database.getTranslation("welcome.first", lang).replace("%username%", name), NamedTextColor.GRAY))
+                                        .append(Component.newline())
+                                        .append(Component.text(database.getTranslation("welcome.second", lang), NamedTextColor.GRAY))
+                                        .append(Component.newline())
+                                        .append(Component.text(database.getTranslation("welcome.third", lang), NamedTextColor.GRAY))
+                        );
+                    }
+                });
+            });
         }
     }
 }

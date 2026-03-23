@@ -19,12 +19,12 @@ import com.google.gson.Gson;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 public class KosuzuKnowsWhereYouLive {
@@ -37,10 +37,10 @@ public class KosuzuKnowsWhereYouLive {
         client = HttpClient.newHttpClient();
     }
 
-    public @Nullable String getCountryCode(Player player) {
+    public CompletableFuture<@Nullable String> getCountryCode(Player player) {
         var address = player.getAddress();
         if (address == null) {
-            return null;
+            return CompletableFuture.completedFuture(null);
         }
 
         return getCountryCode(address.getAddress().getHostAddress());
@@ -49,16 +49,16 @@ public class KosuzuKnowsWhereYouLive {
     /**
      * Get the country code of an IP address
      * @param ip The IP address
-     * @return The country code, or null if the IP address is invalid or location is unknown
+     * @return A future containing the country code, or null if the IP address is invalid or location is unknown
      */
-    public @Nullable String getCountryCode(String ip) {
+    public CompletableFuture<@Nullable String> getCountryCode(String ip) {
         if (ip == null) {
-            return null;
+            return CompletableFuture.completedFuture(null);
         }
 
         if (ip.equals("127.0.0.1")) {
             logger.warning("Localhost IP address detected from player; check forwarding on proxy?");
-            return null;
+            return CompletableFuture.completedFuture(null);
         }
 
         //noinspection HttpUrlsUsage
@@ -67,17 +67,18 @@ public class KosuzuKnowsWhereYouLive {
             .GET()
             .build();
 
-        try {
-            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            var body = response.body();
-            var json = new Gson().fromJson(body, Properties.class);
-            if (json.contains("countryCode")) {
-                return json.getProperty("countryCode");
-            }
-            return null;
-        } catch (IOException | InterruptedException e) {
-            logger.warning("Failed to get country code for " + ip);
-            return null;
-        }
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply(response -> {
+                var body = response.body();
+                var json = new Gson().fromJson(body, Properties.class);
+                if (json.contains("countryCode")) {
+                    return json.getProperty("countryCode");
+                }
+                return null;
+            })
+            .exceptionally(e -> {
+                logger.warning("Failed to get country code for " + ip);
+                return null;
+            });
     }
 }
