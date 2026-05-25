@@ -196,6 +196,12 @@ public class KosuzuLearnsEverything implements CommandExecutor {
         }
 
         var translation = database.getTranslation(messageUuid, uuid);
+        if (translation == null) {
+            sender.sendMessage(
+                    Kosuzu.HEADER.append(Component.text(database.getTranslation("translate.fail", userLanguage), NamedTextColor.RED))
+            );
+            return;
+        }
         translation.loadTranslatedTextMessage(translator, database);
         var translatedLanguage = translation.getTranslatedTextLanguageCode();
         var translated = translation.getTranslatedTextMessage();

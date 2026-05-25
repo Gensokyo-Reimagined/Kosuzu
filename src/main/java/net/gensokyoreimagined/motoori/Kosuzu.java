@@ -76,6 +76,8 @@ public final class Kosuzu extends JavaPlugin {
         command.setExecutor(commandHandler);
 
         getServer().getPluginManager().registerEvents(eventHandler,this);
+
+        getServer().getMessenger().registerIncomingPluginChannel(this, KosuzuProxyListener.CHANNEL, new KosuzuProxyListener(this));
     }
 
     @Override

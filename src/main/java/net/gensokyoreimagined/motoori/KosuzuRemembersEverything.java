@@ -448,6 +448,75 @@ public class KosuzuRemembersEverything implements Closeable {
         return uuid;
     }
 
+    /**
+     * Ingest a chat message that was generated on another backend (Chatty proxy).
+     * Inserts under the provided lookup UUID so that {@code /kosuzu translate <uuid>}
+     * resolves locally. Idempotent — duplicate ingestion of the same lookup UUID
+     * is silently dropped.
+     */
+    public void ingestRemoteMessage(@NotNull UUID lookupUuid, @NotNull String json, @NotNull String message) {
+        kosuzu.getServer().getScheduler().runTaskAsynchronously(kosuzu, () -> ingestRemoteMessageSQL(lookupUuid, json, message));
+    }
+
+    private void ingestRemoteMessageSQL(@NotNull UUID lookupUuid, @NotNull String json, @NotNull String message) {
+        try (var connection = getConnection()) {
+            try (var statement = connection.prepareStatement("SELECT 1 FROM `user_message_lookup` WHERE `uuid` = ?")) {
+                statement.setString(1, lookupUuid.toString());
+                try (var data = statement.executeQuery()) {
+                    if (data.next()) return;
+                }
+            }
+
+            UUID messageUUID = null;
+            try (var statement = connection.prepareStatement("SELECT uuid FROM `message` WHERE `text` = ?")) {
+                statement.setString(1, message);
+                try (var data = statement.executeQuery()) {
+                    if (data.next()) {
+                        messageUUID = UUID.fromString(data.getString("uuid"));
+                    }
+                }
+            }
+
+            if (messageUUID == null) {
+                messageUUID = UUID.randomUUID();
+                try (var statement = connection.prepareStatement("INSERT INTO `message` (`uuid`, `text`) VALUES (?, ?)")) {
+                    statement.setString(1, messageUUID.toString());
+                    statement.setString(2, message);
+                    statement.execute();
+                }
+            }
+
+            UUID userMessageUuid = null;
+            try (var statement = connection.prepareStatement("SELECT `uuid` FROM `user_message` WHERE `json_msg` = ?")) {
+                statement.setString(1, json);
+                try (var data = statement.executeQuery()) {
+                    if (data.next()) {
+                        userMessageUuid = UUID.fromString(data.getString("uuid"));
+                    }
+                }
+            }
+
+            if (userMessageUuid == null) {
+                userMessageUuid = UUID.randomUUID();
+                try (var statement = connection.prepareStatement("INSERT INTO `user_message` (`uuid`, `message_id`, `json_msg`) VALUES (?, ?, ?)")) {
+                    statement.setString(1, userMessageUuid.toString());
+                    statement.setString(2, messageUUID.toString());
+                    statement.setString(3, json);
+                    statement.execute();
+                }
+            }
+
+            try (var statement = connection.prepareStatement(s("INSERT IGNORE INTO `user_message_lookup` (`uuid`, `user_message_id`) VALUES (?, ?)"))) {
+                statement.setString(1, lookupUuid.toString());
+                statement.setString(2, userMessageUuid.toString());
+                statement.execute();
+            }
+        } catch (SQLException e) {
+            logger.severe("Failed to ingest remote message!");
+            logger.severe(e.getMessage());
+        }
+    }
+
     private void addMessageSQL(@NotNull UUID lookupUUID, @NotNull String json, @NotNull String message) {
         try (var connection = getConnection()) {
             UUID messageUUID = null;
