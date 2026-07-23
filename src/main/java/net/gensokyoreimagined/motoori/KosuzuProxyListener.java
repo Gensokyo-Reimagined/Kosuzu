@@ -97,7 +97,7 @@ public class KosuzuProxyListener implements PluginMessageListener {
 
     private @Nullable Component findKosuzuClickSubtree(Component component) {
         ClickEvent click = component.clickEvent();
-        if (click != null && click.action() == ClickEvent.Action.RUN_COMMAND) {
+        if (click != null) {
             String value = click.value();
             if (value != null && value.startsWith(CLICK_PREFIX)) {
                 return component;
