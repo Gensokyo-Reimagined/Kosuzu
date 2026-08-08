@@ -32,6 +32,7 @@ dependencies {
     implementation "org.apache.commons:commons-dbcp2:2.11.0"
     implementation "org.apache.commons:commons-pool2:2.12.0" // can't reload plugin without this
     compileOnly "io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT"
+    compileOnly "net.kyori:adventure-api:5.0.0"
 }
 
 shadowJar {

@@ -73,10 +73,10 @@ public class KosuzuProxyListener implements PluginMessageListener {
         Component subtree = findKosuzuClickSubtree(messageComponent);
         if (subtree == null) return;
 
-        ClickEvent click = subtree.clickEvent();
-        if (click == null) return;
-        String value = click.value();
-        if (value == null || !value.startsWith(CLICK_PREFIX)) return;
+        ClickEvent<?> click = subtree.clickEvent();
+        if (click == null || !(click.payload() instanceof ClickEvent.Payload.Text textPayload)) return;
+        String value = textPayload.value();
+        if (!value.startsWith(CLICK_PREFIX)) return;
 
         UUID lookupUuid;
         try {
@@ -96,12 +96,10 @@ public class KosuzuProxyListener implements PluginMessageListener {
     }
 
     private @Nullable Component findKosuzuClickSubtree(Component component) {
-        ClickEvent click = component.clickEvent();
-        if (click != null) {
-            String value = click.value();
-            if (value != null && value.startsWith(CLICK_PREFIX)) {
-                return component;
-            }
+        ClickEvent<?> click = component.clickEvent();
+        if (click != null && click.payload() instanceof ClickEvent.Payload.Text text
+                && text.value().startsWith(CLICK_PREFIX)) {
+            return component;
         }
         for (Component child : component.children()) {
             Component found = findKosuzuClickSubtree(child);
